@@ -97,6 +97,8 @@
   .log .ts { color: var(--accent-2); margin-right: 8px; }
   .log .clear { float: right; font-size: 11px; }
   .log-empty { color: var(--muted); font-style: italic; }
+  .log .entry.fail { background: rgba(237,41,57,.08); margin: 2px -8px; padding: 6px 10px; border-left: 3px solid var(--accent); border-radius: 4px; }
+  .log .fail-tag { color: var(--accent); font-weight: 600; margin-right: 8px; }
 
   footer { margin-top: 22px; color: var(--muted); font-size: 12px; padding: 0 4px; }
   footer a { color: var(--muted); }
@@ -139,11 +141,13 @@
       <span class="pill"><span id="ua-hint">UA</span></span>
     </div>
     <div class="note">
-      <strong>Android</strong>: try the <span style="color:#3ddc84">Android</span> rows first — these use the documented
-      <code>intent://</code> form with the app's package id, which is the most reliable and falls back to Play Store
-      if the app isn't installed. The bare <code>scheme://</code> rows may be silently dropped by Chrome.<br>
-      <strong>iOS</strong>: try the <span style="color:#7ec8e3">iOS · Android</span> rows. iOS gives no error when a
-      scheme has no handler — silence = no app claims that scheme.<br>
+      <strong>Android</strong>: start with the first row of each app — <code>intent: MAIN/LAUNCHER</code>. That
+      asks the OS to start the app's launcher activity (same as tapping the icon). If even that doesn't open the
+      installed app, the package id is wrong or the app isn't installed. Then try the data-bearing intents.<br>
+      <strong>iOS</strong>: try the <span style="color:#7ec8e3">iOS · Android</span> rows — bare <code>scheme://</code>
+      URIs. iOS gives no error when a scheme has no handler — silence = no app claims that scheme.<br>
+      <strong>If you see "FAILED" entries in the log below</strong>, the intent didn't resolve and Chrome bounced
+      you back here — the app's manifest has no <code>&lt;intent-filter&gt;</code> matching that URI.<br>
       <strong>Sanity</strong>: if even <code>tel:</code> at the bottom doesn't open the dialer, the page mechanism
       itself is the problem, not the bank app.
     </div>
@@ -179,59 +183,73 @@
   // Each row: {app, variant, scheme, tag}
   //   scheme — template, {mobile} {amount} {ref} are substituted
   //   tag    — 'android' | 'ios' | 'both' | 'browser'  (purely informational badge)
-  // For Android, the `intent://...#Intent;scheme=…;package=…;S.browser_fallback_url=…;end`
-  // form is the documented and most-reliable way; it carries the Play Store package id
-  // so the OS knows which app to launch, and falls back to Play Store if not installed.
-  // For iOS, use the raw `scheme://` or the app's https Universal Link.
-  const PLAY = (pkg) => `https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${pkg}`;
-  const intent = (path, scheme, pkg) =>
-    `intent://${path}#Intent;scheme=${scheme};package=${pkg};S.browser_fallback_url=${PLAY(pkg)};end`;
+  //
+  // Why we don't use a Play Store fallback URL: if Chrome can't resolve an
+  // intent:// it follows S.browser_fallback_url silently. That was masking
+  // every failure as "Play Store opened" with no signal that the *intent*
+  // failed. We instead route the fallback back to *this page* with a
+  // ?intent_failed=… marker — on load we read it and write a loud entry to
+  // the activity log so failures are visible.
+  const FAIL_BASE = location.origin + location.pathname;
+  const failbackFor = (app, variant) =>
+    encodeURIComponent(`${FAIL_BASE}?intent_failed=1&app=${encodeURIComponent(app)}&variant=${encodeURIComponent(variant)}`);
+
+  // intent:// with a URI body — looks for an Activity matching VIEW + the URI.
+  const intentData = (app, variant, path, scheme, pkg) =>
+    `intent://${path}#Intent;scheme=${scheme};package=${pkg};S.browser_fallback_url=${failbackFor(app, variant)};end`;
+
+  // intent: with NO URI — asks Android for the MAIN/LAUNCHER activity of the
+  // package. Equivalent to tapping the app icon. If even this fails, the
+  // package id is wrong or the app isn't installed.
+  const intentLaunch = (app, variant, pkg) =>
+    `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${failbackFor(app, variant)};end`;
 
   const SCHEMES = [
     // DBS PayLah! — pkg com.dbs.dbspaylah
-    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah://',                          scheme: 'paylah://' },
-    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah:// + transfer params',        scheme: 'paylah://transfer?mobile={mobile}&amount={amount}&ref={ref}' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// (recommended Android)',    scheme: intent('transfer?mobile={mobile}&amount={amount}&ref={ref}', 'paylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// open app only',            scheme: intent('', 'paylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'browser', variant: 'universal link (dbs.com.sg/PayLah)', scheme: 'https://www.dbs.com.sg/PayLah/' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent: MAIN/LAUNCHER (just open app)',  scheme: intentLaunch('DBS PayLah!', 'intent: MAIN/LAUNCHER (just open app)', 'com.dbs.dbspaylah') },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// scheme=paylah, no path',       scheme: intentData('DBS PayLah!', 'intent:// scheme=paylah, no path', '', 'paylah', 'com.dbs.dbspaylah') },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// transfer w/ params',           scheme: intentData('DBS PayLah!', 'intent:// transfer w/ params', 'transfer?mobile={mobile}&amount={amount}&ref={ref}', 'paylah', 'com.dbs.dbspaylah') },
+    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah://',                              scheme: 'paylah://' },
+    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah:// + transfer params',            scheme: 'paylah://transfer?mobile={mobile}&amount={amount}&ref={ref}' },
+    { app: 'DBS PayLah!',     tag: 'browser', variant: 'universal link (dbs.com.sg/PayLah)',     scheme: 'https://www.dbs.com.sg/PayLah/' },
 
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking
-    { app: 'DBS digibank',    tag: 'both',    variant: 'digibank://',                        scheme: 'digibank://' },
-    { app: 'DBS digibank',    tag: 'both',    variant: 'dbsmax://',                          scheme: 'dbsmax://' },
-    { app: 'DBS digibank',    tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'digibank', 'com.dbs.sg.dbsmbanking') },
+    { app: 'DBS digibank',    tag: 'android', variant: 'intent: MAIN/LAUNCHER',                  scheme: intentLaunch('DBS digibank', 'intent: MAIN/LAUNCHER', 'com.dbs.sg.dbsmbanking') },
+    { app: 'DBS digibank',    tag: 'both',    variant: 'digibank://',                            scheme: 'digibank://' },
+    { app: 'DBS digibank',    tag: 'both',    variant: 'dbsmax://',                              scheme: 'dbsmax://' },
 
     // POSB digibank SG — pkg com.dbs.sg.posbmbanking
-    { app: 'POSB digibank',   tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'posbdigibank', 'com.dbs.sg.posbmbanking') },
+    { app: 'POSB digibank',   tag: 'android', variant: 'intent: MAIN/LAUNCHER',                  scheme: intentLaunch('POSB digibank', 'intent: MAIN/LAUNCHER', 'com.dbs.sg.posbmbanking') },
 
     // OCBC Digital — pkg com.ocbc.mobile
-    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcdigital://',                     scheme: 'ocbcdigital://' },
-    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcpayanyone://',                   scheme: 'ocbcpayanyone://' },
-    { app: 'OCBC Digital',    tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'ocbcdigital', 'com.ocbc.mobile') },
+    { app: 'OCBC Digital',    tag: 'android', variant: 'intent: MAIN/LAUNCHER',                  scheme: intentLaunch('OCBC Digital', 'intent: MAIN/LAUNCHER', 'com.ocbc.mobile') },
+    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcdigital://',                         scheme: 'ocbcdigital://' },
+    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcpayanyone://',                       scheme: 'ocbcpayanyone://' },
 
     // UOB TMRW — pkg com.uob.mighty.app
-    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobtmrw://',                         scheme: 'uobtmrw://' },
-    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobmighty://',                       scheme: 'uobmighty://' },
-    { app: 'UOB TMRW',        tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'uobtmrw', 'com.uob.mighty.app') },
+    { app: 'UOB TMRW',        tag: 'android', variant: 'intent: MAIN/LAUNCHER',                  scheme: intentLaunch('UOB TMRW', 'intent: MAIN/LAUNCHER', 'com.uob.mighty.app') },
+    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobtmrw://',                             scheme: 'uobtmrw://' },
+    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobmighty://',                           scheme: 'uobmighty://' },
 
     // GrabPay (lives inside Grab app) — pkg com.grabtaxi.passenger
-    { app: 'GrabPay',         tag: 'both',    variant: 'grab:// pay screen',                 scheme: 'grab://open?screenType=PAY' },
-    { app: 'GrabPay',         tag: 'both',    variant: 'grabpay://',                         scheme: 'grabpay://' },
-    { app: 'GrabPay',         tag: 'android', variant: 'intent:// pay screen',               scheme: intent('open?screenType=PAY', 'grab', 'com.grabtaxi.passenger') },
-    { app: 'GrabPay',         tag: 'browser', variant: 'Grab OneLink universal',             scheme: 'https://grab.onelink.me/2695613898?adj_t=fbi1ojm&pid=referral' },
+    { app: 'GrabPay',         tag: 'android', variant: 'intent: MAIN/LAUNCHER (Grab app)',       scheme: intentLaunch('GrabPay', 'intent: MAIN/LAUNCHER (Grab app)', 'com.grabtaxi.passenger') },
+    { app: 'GrabPay',         tag: 'android', variant: 'intent:// scheme=grab pay screen',       scheme: intentData('GrabPay', 'intent:// scheme=grab pay screen', 'open?screenType=PAY', 'grab', 'com.grabtaxi.passenger') },
+    { app: 'GrabPay',         tag: 'both',    variant: 'grab://open?screenType=PAY',             scheme: 'grab://open?screenType=PAY' },
+    { app: 'GrabPay',         tag: 'browser', variant: 'Grab OneLink universal',                 scheme: 'https://grab.onelink.me/2695613898?adj_t=fbi1ojm&pid=referral' },
 
     // Singtel Dash — pkg com.SingTel.mWallet
-    { app: 'Singtel Dash',    tag: 'both',    variant: 'dash://',                            scheme: 'dash://' },
-    { app: 'Singtel Dash',    tag: 'both',    variant: 'singtel-dash://',                    scheme: 'singtel-dash://' },
-    { app: 'Singtel Dash',    tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'dash', 'com.SingTel.mWallet') },
+    { app: 'Singtel Dash',    tag: 'android', variant: 'intent: MAIN/LAUNCHER',                  scheme: intentLaunch('Singtel Dash', 'intent: MAIN/LAUNCHER', 'com.SingTel.mWallet') },
+    { app: 'Singtel Dash',    tag: 'both',    variant: 'dash://',                                scheme: 'dash://' },
+    { app: 'Singtel Dash',    tag: 'both',    variant: 'singtel-dash://',                        scheme: 'singtel-dash://' },
 
     // ShopeePay (lives inside Shopee SG) — pkg com.shopee.sg
-    { app: 'ShopeePay',       tag: 'both',    variant: 'shopeesg://',                        scheme: 'shopeesg://' },
-    { app: 'ShopeePay',       tag: 'both',    variant: 'shopee://',                          scheme: 'shopee://' },
-    { app: 'ShopeePay',       tag: 'android', variant: 'intent:// open app',                 scheme: intent('', 'shopeesg', 'com.shopee.sg') },
+    { app: 'ShopeePay',       tag: 'android', variant: 'intent: MAIN/LAUNCHER (Shopee app)',     scheme: intentLaunch('ShopeePay', 'intent: MAIN/LAUNCHER (Shopee app)', 'com.shopee.sg') },
+    { app: 'ShopeePay',       tag: 'both',    variant: 'shopeesg://',                            scheme: 'shopeesg://' },
+    { app: 'ShopeePay',       tag: 'both',    variant: 'shopee://',                              scheme: 'shopee://' },
 
     // Generic sanity checks — if these don't work, the page mechanism itself is broken
-    { app: 'Sanity checks',   tag: 'both',    variant: 'tel: (open dialer)',                 scheme: 'tel:{mobile}' },
-    { app: 'Sanity checks',   tag: 'both',    variant: 'sms: (open messages)',               scheme: 'sms:{mobile}?body=PayNow%20{amount}%20{ref}' },
+    { app: 'Sanity checks',   tag: 'both',    variant: 'tel: (open dialer)',                     scheme: 'tel:{mobile}' },
+    { app: 'Sanity checks',   tag: 'both',    variant: 'sms: (open messages)',                   scheme: 'sms:{mobile}?body=PayNow%20{amount}%20{ref}' },
   ];
 
   const TAG_LABEL = { android: 'Android', ios: 'iOS', both: 'iOS · Android', browser: 'Universal' };
@@ -347,19 +365,48 @@
     }
   };
 
-  // ---- Activity log -------------------------------------------------------
+  // ---- Activity log (persisted in sessionStorage so it survives fallback nav)
+  const LOG_KEY = 'paynow.log.v1';
+  const loadLog = () => { try { return JSON.parse(sessionStorage.getItem(LOG_KEY) || '[]'); } catch { return []; } };
+  const saveLog = (arr) => { try { sessionStorage.setItem(LOG_KEY, JSON.stringify(arr.slice(0, 50))); } catch {} };
+
   const logEl = () => $('#log');
-  const log = (label, url) => {
+  const renderLog = () => {
     const el = logEl();
-    if (el.querySelector('.log-empty')) el.innerHTML = '';
-    const entry = create('div', { class: 'entry' });
-    const time = new Date().toLocaleTimeString();
-    entry.innerHTML = `<span class="ts">${time}</span><strong>${label}</strong><br>${url}`;
-    el.prepend(entry);
+    const items = loadLog();
+    if (!items.length) { el.innerHTML = '<div class="log-empty">No attempts yet — tap a button above.</div>'; return; }
+    el.innerHTML = '';
+    items.forEach((it) => {
+      const entry = create('div', { class: 'entry' + (it.fail ? ' fail' : '') });
+      const cls = it.fail ? 'fail-tag' : 'ts';
+      entry.innerHTML =
+        `<span class="${cls}">${it.fail ? 'FAILED ' : ''}${it.time}</span>` +
+        `<strong>${it.label}</strong><br>${it.url}`;
+      el.appendChild(entry);
+    });
+  };
+  const log = (label, url, fail=false) => {
+    const items = loadLog();
+    items.unshift({ time: new Date().toLocaleTimeString(), label, url, fail });
+    saveLog(items);
+    renderLog();
   };
   $('#clearLog').addEventListener('click', () => {
-    logEl().innerHTML = '<div class="log-empty">No attempts yet — tap a button above.</div>';
+    saveLog([]); renderLog();
   });
+
+  // ---- Detect intent-fallback bounce --------------------------------------
+  // When an intent:// can't be resolved, our fallback URL brings the user
+  // back here with ?intent_failed=1&app=…&variant=…. Log that loudly and
+  // strip the query so refreshes don't re-log.
+  const handleIntentFailure = () => {
+    const q = new URLSearchParams(location.search);
+    if (q.get('intent_failed') !== '1') return;
+    const app = q.get('app') || 'unknown';
+    const variant = q.get('variant') || 'unknown';
+    log(`${app} — ${variant}`, 'No matching activity found. App probably not installed, or its manifest has no <intent-filter> matching this URI.', true);
+    history.replaceState({}, '', location.pathname);
+  };
 
   // ---- Input change → refresh visible URLs --------------------------------
   ['#mobile','#amount','#ref'].forEach(sel => {
@@ -371,6 +418,8 @@
   // ---- Boot ---------------------------------------------------------------
   detectPlatform();
   renderApps();
+  renderLog();
+  handleIntentFailure();
 </script>
 </body>
 </html>
