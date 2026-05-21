@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ed2939">
+<title>SG Payment Deep Link Test — paynow.sankhacooray.com</title>
+
+<meta name="description" content="Experimental sandbox for testing which Singapore payment-app deep-link schemes actually open on your phone (PayLah, DBS digibank, OCBC, UOB, GrabPay, Singtel Dash, ShopeePay).">
+<meta property="og:title" content="SG Payment Deep Link Test">
+<meta property="og:description" content="Tap-test deep links into PayLah, OCBC, UOB, GrabPay, Dash, ShopeePay with a prefilled amount.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://paynow.sankhacooray.com/">
+
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --panel-2: #20242d;
+    --line: #2a2f3a;
+    --text: #e7eaf0;
+    --muted: #9aa3b2;
+    --accent: #ed2939; /* SG flag red */
+    --accent-2: #ffb703;
+    --ok: #4ade80;
+    --warn: #f59e0b;
+    --code: #0b0d12;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --panel-2: #f0f2f7;
+      --line: #e1e5ee;
+      --text: #15181f;
+      --muted: #5b6473;
+      --code: #f3f4f9;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 14px 80px; }
+  header { padding: 8px 4px 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
+  h1 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; transform: translateY(-2px); }
+  .sub { color: var(--muted); font-size: 13px; }
+  .sub a { color: var(--muted); }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 12px 0; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input[type=text], input[type=tel], input[type=number] {
+    width: 100%; padding: 12px 12px; font: inherit; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .pill .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .app-block { margin-top: 18px; }
+  .app-head { display: flex; align-items: baseline; gap: 8px; margin: 4px 2px 8px; }
+  .app-head .name { font-weight: 600; font-size: 15px; }
+  .app-head .tag { color: var(--muted); font-size: 12px; }
+
+  .btn {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    margin: 8px 0; text-decoration: none;
+    transition: transform .04s ease, border-color .15s ease, background .15s ease;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:active { transform: scale(.995); }
+  .btn .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .btn .label { font-weight: 600; font-size: 14px; }
+  .btn .url { display: block; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); margin-top: 6px; word-break: break-all; background: var(--code); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
+  .btn .copy {
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+    border-radius: 8px; padding: 6px 9px; font-size: 11px; cursor: pointer;
+  }
+  .btn .copy:hover { color: var(--text); border-color: var(--accent); }
+  .btn .copy.ok { color: var(--ok); border-color: var(--ok); }
+
+  .log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 240px; overflow: auto; color: var(--muted); }
+  .log .entry { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .log .entry:last-child { border-bottom: none; }
+  .log .ts { color: var(--accent-2); margin-right: 8px; }
+  .log .clear { float: right; font-size: 11px; }
+  .log-empty { color: var(--muted); font-style: italic; }
+
+  footer { margin-top: 22px; color: var(--muted); font-size: 12px; padding: 0 4px; }
+  footer a { color: var(--muted); }
+  details { margin-top: 6px; }
+  summary { cursor: pointer; color: var(--muted); }
+
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="dot"></span>SG Payment Deep Link Test</h1>
+    <div class="sub">
+      Tap a button to attempt opening the named app via its custom URL scheme.
+      None of these are official APIs — this is a sandbox to discover what each app actually accepts.
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>Test parameters</h2>
+    <div class="grid">
+      <div>
+        <label for="mobile">Recipient (mobile / UEN / NRIC)</label>
+        <input id="mobile" type="tel" inputmode="tel" autocomplete="off" placeholder="91234567" value="91234567">
+      </div>
+      <div>
+        <label for="amount">Amount (SGD)</label>
+        <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" value="1.00">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label style="margin:0; flex:1">
+        <span style="display:block; margin-bottom:4px">Reference / note (optional)</span>
+        <input id="ref" type="text" placeholder="paynow test" value="paynow test">
+      </label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="pill"><span class="swatch"></span><span id="platform">detecting…</span></span>
+      <span class="pill"><span id="ua-hint">UA</span></span>
+    </div>
+    <div class="note">
+      iOS hides whether a custom scheme launched — if nothing happens, the app probably doesn't claim that scheme.
+      On Android you'll usually see a chooser or an error toast.
+    </div>
+  </section>
+
+  <section id="apps"></section>
+
+  <section class="card">
+    <h2>Activity log <button class="copy clear" id="clearLog" type="button">clear</button></h2>
+    <div class="log" id="log"><div class="log-empty">No attempts yet — tap a button above.</div></div>
+  </section>
+
+  <footer>
+    Repo: <a href="https://github.com/sankhacooray/paynow-sankhacooray-com">github.com/sankhacooray/paynow-sankhacooray-com</a>.
+    <details>
+      <summary>About the schemes</summary>
+      <div class="note">
+        Custom URL schemes are claimed by an installed app's manifest (iOS <code>LSApplicationQueriesSchemes</code> / Info.plist;
+        Android intent filters). Schemes shown here are a mix of community-observed strings and educated guesses.
+        Add or remove rows by editing <code>SCHEMES</code> in <code>index.html</code>.
+      </div>
+    </details>
+  </footer>
+</div>
+
+<script>
+  // ---- Scheme catalogue ---------------------------------------------------
+  // {app, variant, scheme} — scheme is a template; {mobile} {amount} {ref} are substituted.
+  // Grouped in render by `app`. Order within an app = order of appearance below.
+  const SCHEMES = [
+    // DBS PayLah!
+    { app: 'DBS PayLah!',     variant: 'open app',                  scheme: 'paylah://' },
+    { app: 'DBS PayLah!',     variant: 'transfer w/ params',        scheme: 'paylah://transfer?mobile={mobile}&amount={amount}&ref={ref}' },
+    { app: 'DBS PayLah!',     variant: 'paynow w/ params',          scheme: 'paylah://paynow?mobile={mobile}&amount={amount}' },
+    { app: 'DBS PayLah!',     variant: 'universal link',            scheme: 'https://www.dbs.com.sg/PayLah/' },
+
+    // DBS digibank
+    { app: 'DBS digibank',    variant: 'digibank://',               scheme: 'digibank://' },
+    { app: 'DBS digibank',    variant: 'dbsmax://',                 scheme: 'dbsmax://' },
+
+    // OCBC
+    { app: 'OCBC Digital',    variant: 'ocbcdigital://',            scheme: 'ocbcdigital://' },
+    { app: 'OCBC Pay Anyone', variant: 'open app',                  scheme: 'ocbcpayanyone://' },
+    { app: 'OCBC Pay Anyone', variant: 'transfer w/ params',        scheme: 'ocbcpayanyone://transfer?mobile={mobile}&amount={amount}' },
+
+    // UOB
+    { app: 'UOB TMRW',        variant: 'uobtmrw://',                scheme: 'uobtmrw://' },
+    { app: 'UOB Mighty',      variant: 'uobmighty://',              scheme: 'uobmighty://' },
+
+    // GrabPay
+    { app: 'GrabPay',         variant: 'grab:// pay screen',        scheme: 'grab://open?screenType=PAY' },
+    { app: 'GrabPay',         variant: 'grabpay://',                scheme: 'grabpay://' },
+
+    // Singtel Dash
+    { app: 'Singtel Dash',    variant: 'dash://',                   scheme: 'dash://' },
+    { app: 'Singtel Dash',    variant: 'singtel-dash://',           scheme: 'singtel-dash://' },
+
+    // ShopeePay
+    { app: 'ShopeePay',       variant: 'shopee://',                 scheme: 'shopee://' },
+    { app: 'ShopeePay',       variant: 'shopeesg://',               scheme: 'shopeesg://' },
+
+    // Generic sanity checks
+    { app: 'Sanity checks',   variant: 'tel: (open dialer)',        scheme: 'tel:{mobile}' },
+    { app: 'Sanity checks',   variant: 'sms: (open messages)',      scheme: 'sms:{mobile}?body=PayNow%20{amount}%20{ref}' },
+  ];
+
+  // ---- Helpers ------------------------------------------------------------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const create = (tag, attrs={}, html='') => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') el.className = v;
+      else if (k === 'dataset') Object.assign(el.dataset, v);
+      else el.setAttribute(k, v);
+    }
+    if (html) el.innerHTML = html;
+    return el;
+  };
+
+  const params = () => ({
+    mobile: encodeURIComponent($('#mobile').value.trim() || ''),
+    amount: encodeURIComponent($('#amount').value.trim() || ''),
+    ref:    encodeURIComponent($('#ref').value.trim() || ''),
+  });
+
+  const interpolate = (template) => {
+    const p = params();
+    return template.replace(/\{(mobile|amount|ref)\}/g, (_, k) => p[k]);
+  };
+
+  // ---- Platform detection -------------------------------------------------
+  const detectPlatform = () => {
+    const ua = navigator.userAgent;
+    let plat = 'Other';
+    if (/iPhone|iPad|iPod/i.test(ua)) plat = 'iOS';
+    else if (/Android/i.test(ua)) plat = 'Android';
+    else if (/Mac/i.test(ua)) plat = 'macOS (desktop)';
+    else if (/Windows/i.test(ua)) plat = 'Windows (desktop)';
+    $('#platform').textContent = plat;
+    $('#ua-hint').textContent = ua.length > 60 ? ua.slice(0, 57) + '…' : ua;
+  };
+
+  // ---- Render -------------------------------------------------------------
+  const renderApps = () => {
+    const root = $('#apps');
+    root.innerHTML = '';
+    const grouped = SCHEMES.reduce((acc, s) => {
+      (acc[s.app] = acc[s.app] || []).push(s);
+      return acc;
+    }, {});
+
+    for (const [appName, rows] of Object.entries(grouped)) {
+      const block = create('section', { class: 'card app-block' });
+      const head = create('div', { class: 'app-head' });
+      head.appendChild(create('span', { class: 'name' }, appName));
+      head.appendChild(create('span', { class: 'tag' }, `${rows.length} scheme${rows.length>1?'s':''}`));
+      block.appendChild(head);
+
+      rows.forEach((row) => {
+        const btn = create('a', { class: 'btn', href: '#', role: 'button' });
+        const top = create('div', { class: 'top' });
+        top.appendChild(create('span', { class: 'label' }, `${row.variant}`));
+        const copyBtn = create('button', { class: 'copy', type: 'button' }, 'copy');
+        top.appendChild(copyBtn);
+        btn.appendChild(top);
+        const urlEl = create('span', { class: 'url' });
+        btn.appendChild(urlEl);
+
+        const updateUrl = () => { urlEl.textContent = interpolate(row.scheme); };
+        updateUrl();
+        btn._refresh = updateUrl;
+
+        btn.addEventListener('click', (e) => {
+          if (e.target === copyBtn || copyBtn.contains(e.target)) return;
+          e.preventDefault();
+          const url = interpolate(row.scheme);
+          log(`${row.app} — ${row.variant}`, url);
+          // Attempt the deep link. iOS Safari requires this to be a user-initiated nav.
+          window.location.href = url;
+        });
+
+        copyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const url = interpolate(row.scheme);
+          try {
+            await navigator.clipboard.writeText(url);
+            copyBtn.textContent = 'copied';
+            copyBtn.classList.add('ok');
+            setTimeout(() => { copyBtn.textContent = 'copy'; copyBtn.classList.remove('ok'); }, 1200);
+          } catch {
+            copyBtn.textContent = 'fail';
+            setTimeout(() => { copyBtn.textContent = 'copy'; }, 1200);
+          }
+        });
+
+        block.appendChild(btn);
+      });
+
+      root.appendChild(block);
+    }
+  };
+
+  // ---- Activity log -------------------------------------------------------
+  const logEl = () => $('#log');
+  const log = (label, url) => {
+    const el = logEl();
+    if (el.querySelector('.log-empty')) el.innerHTML = '';
+    const entry = create('div', { class: 'entry' });
+    const time = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="ts">${time}</span><strong>${label}</strong><br>${url}`;
+    el.prepend(entry);
+  };
+  $('#clearLog').addEventListener('click', () => {
+    logEl().innerHTML = '<div class="log-empty">No attempts yet — tap a button above.</div>';
+  });
+
+  // ---- Input change → refresh visible URLs --------------------------------
+  ['#mobile','#amount','#ref'].forEach(sel => {
+    $(sel).addEventListener('input', () => {
+      document.querySelectorAll('.btn').forEach(b => b._refresh && b._refresh());
+    });
+  });
+
+  // ---- Boot ---------------------------------------------------------------
+  detectPlatform();
+  renderApps();
+</script>
+</body>
+</html>
