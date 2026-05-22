@@ -161,13 +161,15 @@
     <div class="note">
       <strong>Order of likelihood per app:</strong>
       <span style="color:#f59e0b">App Link</span> (verified https URL) →
-      <span style="color:#3ddc84">Android</span> intent →
-      <span style="color:#cbd2e0">iOS · Android</span> custom scheme.<br>
-      When a launch attempt fails on Android, Chrome bounces back here and a red banner appears at the top —
-      so a "page just reloads" symptom means the OS couldn't find an installed app handling that URI.<br>
-      Apps with <strong>no verified App Links</strong> on any public domain (DBS PayLah!, OCBC Digital, UOB TMRW)
-      probably can't be opened from a web link at all — the realistic alternative is an SGQR PayNow QR code
-      that any bank app can scan.
+      <span style="color:#3ddc84">Android</span> intent (custom scheme) →
+      <span style="color:#cbd2e0">iOS · Android</span> bare scheme.<br>
+      Chrome on Android <em>strips</em> <code>action=MAIN+category=LAUNCHER</code> from web-originated intents
+      (security restriction), so "just open the app icon" via a web link isn't possible — only intents matching
+      a specific <code>&lt;intent-filter&gt;</code> declared by the app can launch it.<br>
+      <strong>If you see "FAILED" in the red banner</strong> (or the app website opens in Chrome instead of the app):
+      the URL doesn't match an autoVerify intent-filter pattern in the installed app's manifest.<br>
+      Apps with no verified App Links on any public domain (DBS PayLah!, OCBC Digital, UOB TMRW) probably can't
+      be opened from a web link at all — the realistic alternative is an SGQR PayNow QR code.
     </div>
   </section>
 
