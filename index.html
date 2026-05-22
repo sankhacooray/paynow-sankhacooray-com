@@ -124,14 +124,10 @@
   <header>
     <h1><span class="dot"></span>SG Payment Deep Link Test (Android)</h1>
     <div class="sub">
-      App-to-app deep linking only. <span style="color:#f59e0b">App Link</span> rows = https URLs on
-      verified domains; <span style="color:#3ddc84">Android intent</span> rows = <code>intent://…</code>
-      URIs targeting the app's package.<br>
-      <strong>PayLah! status:</strong> intent-filter is scheme+host only
-      (<code>dbspaylah://com.dbs.paylah/*</code>) — any path opens the app, but the in-app URI handler only
-      acts on the <code>txnref</code> param, and that token is a DBS-server-stored opaque ID we can't forge.
-      <em>Arbitrary prefilled amount/recipient is not possible</em> — a real <code>tranRef</code> must come
-      from PayLah's "Request Funds" share, or from DBS's merchant API.
+      Tap-test sandbox for which Singapore payment-app deep links open which screen.
+      <span style="color:#f59e0b">App Link</span> rows = verified-domain https URLs;
+      <span style="color:#3ddc84">Android intent</span> rows = <code>intent://…</code> URIs targeting
+      the app's package. See the Findings card below for what's possible and what isn't.
     </div>
   </header>
 
@@ -172,6 +168,44 @@
       Chrome strips <code>action=MAIN</code> from web-originated intents, so "open this app like tapping its
       icon" isn't possible from a web page — every working deep link must target a specific
       <code>&lt;intent-filter&gt;</code>.
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Findings — what's actually possible</h2>
+    <div class="note" style="line-height:1.55">
+      <p style="margin:0 0 8px"><strong>DBS PayLah!</strong> — only the
+      <code>?txnref=…</code> path opens the payment screen. PayLah's intent-filter is scheme + host only
+      (<code>dbspaylah://com.dbs.paylah/*</code>) and the in-app URI handler only processes the
+      <code>txnref</code> query param. That token is DBS-server-signed and time-limited; we tested 12+
+      alternate hosts and paths (<code>/scan</code>, <code>/qr</code>, <code>/transfer</code>,
+      <code>/pay</code>, <code>/paynow</code>, <code>/send</code>, <code>scanqr</code>,
+      <code>scanandpay</code>, bare, etc.) — every one either fails no-match or opens PayLah to home with
+      params silently discarded.</p>
+
+      <p style="margin:0 0 8px"><strong>OCBC Digital, UOB TMRW</strong> — no Android App Link verification
+      on any public domain, custom schemes don't resolve. Deliberately not exposed.</p>
+
+      <p style="margin:0 0 10px"><strong>By design, not oversight.</strong> Free-form deep-link-driven
+      payment prefill doesn't exist on any SG bank app: if
+      <code>dbspaylah://?mid=X&amount=Y</code> popped a payment screen, anyone could phish-link a victim
+      into paying an attacker's MID. Merchant data only enters the apps via (a) the camera scanner — a
+      deliberate physical user action — or (b) a server-signed transaction reference issued via a
+      merchant agreement.</p>
+
+      <p style="margin:0"><strong>Feasible workarounds:</strong></p>
+      <ul style="margin:6px 0 0 0; padding-left:20px">
+        <li><strong>DBS PayLah Merchant API</strong> — B2B contract; your backend mints a real
+        <code>tranRef</code>, share the URL, user taps → prefilled screen opens. The
+        <em>only</em> supported way to deep-link into PayLah with arbitrary amount + recipient.</li>
+        <li><strong>PayNow SGQR</strong> — render an EMVCo PayNow QR (the standard SG QR format).
+        Recipient scans with any SG bank app (DBS, OCBC, UOB, SCB, Citi, Maybank…) and lands on a
+        prefilled transfer screen. No per-bank deal required.</li>
+        <li><strong>PSP integration</strong> — Stripe / Adyen / 2C2P with PayNow / GrabPay / NETS as
+        web-checkout payment methods. Browser flow, not a bank-app deep link.</li>
+        <li><strong>Per-bank merchant APIs</strong> — OCBC, UOB have B2B equivalents to DBS's
+        Merchant API. Same shape: backend signs, app validates.</li>
+      </ul>
     </div>
   </section>
 
@@ -257,23 +291,8 @@
     { app: 'DBS PayLah!',     tag: 'applink', variant: 'DBS Payment Link page — opens payment screen (txnref-validated)', scheme: 'https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef={ref}' },
     { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// txnref — opens payment screen (txnref-validated)',     scheme: intentData('DBS PayLah!', 'intent:// txnref', 'com.dbs.paylah/?txnref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
 
-    // Variants suggested by another project (2026-05). These probe whether
-    // PayLah declares ADDITIONAL intent-filters beyond the one we already
-    // characterised (scheme=dbspaylah host=com.dbs.paylah). The host portions
-    // here (scan, scanqr, qr, etc.) are different hosts — a match would mean
-    // PayLah has a second filter with `host="scan"` etc. Predicted: no-app /
-    // FAILED, because PayLah likely only has the one filter we already
-    // identified — but confirming empirically.
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scan (host=scan)',          scheme: 'dbspaylah://scan' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanqr (host=scanqr)',      scheme: 'dbspaylah://scanqr' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanpay (host=scanpay)',    scheme: 'dbspaylah://scanpay' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://qr (host=qr)',              scheme: 'dbspaylah://qr' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanandpay',                scheme: 'dbspaylah://scanandpay' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scan-pay',                  scheme: 'dbspaylah://scan-pay' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah:// (bare, no host)',          scheme: 'dbspaylah://' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'paylah:// (re-test, prev confirmed dead)', scheme: 'paylah://' },
-    { app: 'DBS PayLah!',     tag: 'applink', variant: 'paylah.com.sg/scan (DNS dead — will not load)', scheme: 'https://www.paylah.com.sg/scan' },
-    { app: 'DBS PayLah!',     tag: 'applink', variant: 'dbs.com.sg /paylah/scan.html (spinner → homepage)', scheme: 'https://www.dbs.com.sg/personal/mobile/paylah/scan.html' },
+    // (10 alternate host/path variants tested 2026-05, all failed — see
+    // git history. PayLah really does only declare the one intent-filter.)
 
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking. Verified App Link domains:
     // www.dbs.com.sg, dbs.com.sg, www.posb.com.sg, posb.com.sg.
@@ -306,13 +325,10 @@
     { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (shopee.sg/m/scan)',                            scheme: 'https://shopee.sg/m/scan' },
     { app: 'ShopeePay',       tag: 'android', variant: 'intent:// scheme=shopeesg wallet',                       scheme: intentData('ShopeePay', 'intent:// scheme=shopeesg wallet', 'wallet', 'shopeesg', 'com.shopee.sg') },
 
-    // OCBC Digital — pkg com.ocbc.mobile. No App Links discovered, custom
-    // schemes only — and these almost certainly don't resolve. Kept as a
-    // marker so we don't re-add them.
-    { app: 'OCBC Digital',    tag: 'android', variant: 'intent:// scheme=ocbcdigital',                           scheme: intentData('OCBC Digital', 'intent:// scheme=ocbcdigital', '', 'ocbcdigital', 'com.ocbc.mobile') },
-
-    // UOB TMRW — pkg com.uob.mighty.app. No App Links discovered.
-    { app: 'UOB TMRW',        tag: 'android', variant: 'intent:// scheme=uobtmrw',                               scheme: intentData('UOB TMRW', 'intent:// scheme=uobtmrw', '', 'uobtmrw', 'com.uob.mighty.app') },
+    // (OCBC Digital + UOB TMRW removed. Neither has Android App Link
+    // verification on any public domain, custom schemes don't resolve, and
+    // per upstream research these apps deliberately don't expose deep-link
+    // payment-prefill for the same security reasons as PayLah.)
 
     // Sanity check — confirms JS-driven nav is working
     { app: 'Sanity check',    tag: 'applink', variant: 'tel: (open dialer)',                                     scheme: 'tel:{mobile}' },
