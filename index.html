@@ -124,14 +124,14 @@
   <header>
     <h1><span class="dot"></span>SG Payment Deep Link Test (Android)</h1>
     <div class="sub">
-      App-to-app deep linking only — no QR fallback. <span style="color:#f59e0b">App Link</span> rows are
-      https URLs on domains the app has verified; <span style="color:#3ddc84">Android intent</span> rows are
-      <code>intent://…</code> URIs targeting the app's package.<br>
-      <strong>PayLah!:</strong> scheme <code>dbspaylah://</code>, host <code>com.dbs.paylah</code>, package
-      <code>com.dbs.dbspaylah</code> (from DBS's own <code>paylink.js</code>). The known-good path is
-      <code>/?txnref=…</code> but the token is DBS-server-signed, so arbitrary strings show "Payment link
-      expired". The other PayLah rows are guesses at additional intent-filter paths that may accept plain
-      amount+recipient params — needs phone testing to confirm.
+      App-to-app deep linking only. <span style="color:#f59e0b">App Link</span> rows = https URLs on
+      verified domains; <span style="color:#3ddc84">Android intent</span> rows = <code>intent://…</code>
+      URIs targeting the app's package.<br>
+      <strong>PayLah! status:</strong> intent-filter is scheme+host only
+      (<code>dbspaylah://com.dbs.paylah/*</code>) — any path opens the app, but the in-app URI handler only
+      acts on the <code>txnref</code> param, and that token is a DBS-server-stored opaque ID we can't forge.
+      <em>Arbitrary prefilled amount/recipient is not possible</em> — a real <code>tranRef</code> must come
+      from PayLah's "Request Funds" share, or from DBS's merchant API.
     </div>
   </header>
 
@@ -241,25 +241,21 @@
     // encoding payee+amount+reference — arbitrary tokens may open the app
     // to a "link expired" screen, but should confirm the scheme handler
     // exists. Use the {ref} field for the txnref value while testing.
-    // Known-good (opens to Payment Link screen, txnref-validated server-side
-    // → arbitrary tokens show "Payment link expired" but the scheme handler is
-    // confirmed). The {ref} field doubles as the txnref value here — paste a
-    // real DBS-issued tranRef from a shared PayLah Payment Link to actually
-    // pay; arbitrary strings will fail with "expired".
-    { app: 'DBS PayLah!',     tag: 'applink', variant: 'DBS Payment Link page (dbs.com.sg/paylink) — known-good',scheme: 'https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef={ref}' },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// txnref (DBS own format) — known-good',         scheme: intentData('DBS PayLah!', 'intent:// txnref (DBS own format)', 'com.dbs.paylah/?txnref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
-
-    // Guesses targeting other intent-filter paths PayLah may declare. The
-    // host `com.dbs.paylah` is kept because that's what DBS's own JS uses,
-    // so it's the most likely registered host. If PayLah accepts amount +
-    // recipient as plain query params on any of these paths, we'd be done.
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/transfer w/ params',                      scheme: intentData('DBS PayLah!', 'intent:// /transfer w/ params', 'com.dbs.paylah/transfer?mobile={mobile}&amount={amount}&ref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/pay w/ params',                           scheme: intentData('DBS PayLah!', 'intent:// /pay w/ params', 'com.dbs.paylah/pay?mobile={mobile}&amount={amount}&ref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/paynow w/ params',                        scheme: intentData('DBS PayLah!', 'intent:// /paynow w/ params', 'com.dbs.paylah/paynow?mobile={mobile}&amount={amount}&ref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/send w/ params',                          scheme: intentData('DBS PayLah!', 'intent:// /send w/ params', 'com.dbs.paylah/send?mobile={mobile}&amount={amount}&ref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/scan (open scanner)',                     scheme: intentData('DBS PayLah!', 'intent:// /scan', 'com.dbs.paylah/scan', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// path=/qr (open QR generator)',                  scheme: intentData('DBS PayLah!', 'intent:// /qr', 'com.dbs.paylah/qr', 'dbspaylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// no host /transfer (host wildcard?)',            scheme: intentData('DBS PayLah!', 'intent:// no host /transfer', 'transfer?mobile={mobile}&amount={amount}', 'dbspaylah', 'com.dbs.dbspaylah') },
+    // Fully characterised 2026-05. PayLah's intent-filter is scheme+host
+    // only (dbspaylah://com.dbs.paylah/*) with no path discrimination — any
+    // path under that host opens the app — but the in-app URI handler only
+    // does anything useful when it receives a `txnref` query parameter
+    // (which it then looks up against DBS's server). Other paths / params
+    // are silently dropped, leaving the user on the home screen.
+    // Tested rows that we KNOW go to home screen are dropped to reduce
+    // clutter: /transfer, /pay, /paynow, /send, /scan, /qr, and host-less
+    // /transfer (the host-less variant fails outright with no match).
+    // → Conclusion: PayLah cannot be deep-linked with arbitrary prefilled
+    //   amount/recipient. The txnref is a DBS-server-stored opaque ID;
+    //   real ones must come from the PayLah app's 'Request Funds' share
+    //   flow (or DBS's merchant API for B2B).
+    { app: 'DBS PayLah!',     tag: 'applink', variant: 'DBS Payment Link page — opens payment screen (txnref-validated)', scheme: 'https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef={ref}' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// txnref — opens payment screen (txnref-validated)',     scheme: intentData('DBS PayLah!', 'intent:// txnref', 'com.dbs.paylah/?txnref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
 
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking. Verified App Link domains:
     // www.dbs.com.sg, dbs.com.sg, www.posb.com.sg, posb.com.sg.
