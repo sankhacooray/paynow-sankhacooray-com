@@ -218,11 +218,9 @@
   const intentData = (app, variant, path, scheme, pkg) =>
     `intent://${path}#Intent;scheme=${scheme};package=${pkg};S.browser_fallback_url=${failbackFor(app, variant)};end`;
 
-  // intent: with NO URI — asks Android for the MAIN/LAUNCHER activity of the
-  // package. Equivalent to tapping the app icon. If even this fails, the
-  // package id is wrong or the app isn't installed.
-  const intentLaunch = (app, variant, pkg) =>
-    `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${failbackFor(app, variant)};end`;
+  // (intentLaunch with action=MAIN+category=LAUNCHER was removed — Chrome
+  // on Android strips non-VIEW actions from web-originated intent URIs as
+  // a security measure, so it can never resolve. Tested 2026-05.)
 
   // For an https://… App Link to actually route to the app, the URL must be
   // listed in the app's intent-filter (autoVerify=true) AND the path must
@@ -234,7 +232,6 @@
     // DBS PayLah! — pkg com.dbs.dbspaylah. No verified App Link domains found
     // on any DBS subdomain (dbs.com.sg, posb.com.sg, paylah.* all checked).
     // Custom schemes appear unsupported in current builds. Likely dead end.
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent: MAIN/LAUNCHER (Chrome may block)',  scheme: intentLaunch('DBS PayLah!', 'intent: MAIN/LAUNCHER', 'com.dbs.dbspaylah') },
     { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// scheme=paylah, no path',          scheme: intentData('DBS PayLah!', 'intent:// scheme=paylah, no path', '', 'paylah', 'com.dbs.dbspaylah') },
     { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// transfer w/ params',              scheme: intentData('DBS PayLah!', 'intent:// transfer w/ params', 'transfer?mobile={mobile}&amount={amount}&ref={ref}', 'paylah', 'com.dbs.dbspaylah') },
     { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah://',                                 scheme: 'paylah://' },
@@ -242,44 +239,41 @@
 
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking. Verified App Link domains:
     // www.dbs.com.sg, dbs.com.sg, www.posb.com.sg, posb.com.sg.
-    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (dbs.com.sg verified)',            scheme: 'https://www.dbs.com.sg/personal/default.page' },
-    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (dbs.com.sg, deep path guess)',    scheme: 'https://www.dbs.com.sg/personal/dbs-mobile-banking.page' },
-    { app: 'DBS digibank',    tag: 'android', variant: 'intent: MAIN/LAUNCHER',                     scheme: intentLaunch('DBS digibank', 'intent: MAIN/LAUNCHER', 'com.dbs.sg.dbsmbanking') },
+    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (root, dbs.com.sg)',               scheme: 'https://www.dbs.com.sg/' },
+    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (personal page)',                  scheme: 'https://www.dbs.com.sg/personal/default.page' },
+    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (digibank login deep path)',       scheme: 'https://www.dbs.com.sg/personal/dbs-mobile-banking.page' },
     { app: 'DBS digibank',    tag: 'both',    variant: 'digibank://',                               scheme: 'digibank://' },
     { app: 'DBS digibank',    tag: 'both',    variant: 'dbsmax://',                                 scheme: 'dbsmax://' },
 
     // POSB digibank SG — pkg com.dbs.sg.posbmbanking. Same verified domains.
-    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (posb.com.sg verified)',           scheme: 'https://www.posb.com.sg/personal/default.page' },
-    { app: 'POSB digibank',   tag: 'android', variant: 'intent: MAIN/LAUNCHER',                     scheme: intentLaunch('POSB digibank', 'intent: MAIN/LAUNCHER', 'com.dbs.sg.posbmbanking') },
+    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (root, posb.com.sg)',              scheme: 'https://www.posb.com.sg/' },
+    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (personal page)',                  scheme: 'https://www.posb.com.sg/personal/default.page' },
 
     // OCBC Digital — pkg com.ocbc.mobile. ocbc.com / ocbc.com.sg don't serve
     // assetlinks.json at all. No App Links discovered.
-    { app: 'OCBC Digital',    tag: 'android', variant: 'intent: MAIN/LAUNCHER (Chrome may block)',  scheme: intentLaunch('OCBC Digital', 'intent: MAIN/LAUNCHER', 'com.ocbc.mobile') },
     { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcdigital://',                            scheme: 'ocbcdigital://' },
     { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcpayanyone://',                          scheme: 'ocbcpayanyone://' },
 
     // UOB TMRW — pkg com.uob.mighty.app. No assetlinks.json on uob.com.sg.
-    { app: 'UOB TMRW',        tag: 'android', variant: 'intent: MAIN/LAUNCHER (Chrome may block)',  scheme: intentLaunch('UOB TMRW', 'intent: MAIN/LAUNCHER', 'com.uob.mighty.app') },
     { app: 'UOB TMRW',        tag: 'both',    variant: 'uobtmrw://',                                scheme: 'uobtmrw://' },
     { app: 'UOB TMRW',        tag: 'both',    variant: 'uobmighty://',                              scheme: 'uobmighty://' },
 
     // GrabPay (lives inside Grab) — pkg com.grabtaxi.passenger. Verified:
     // www.grab.com, grab.com.
-    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (grab.com verified)',              scheme: 'https://www.grab.com/sg/' },
+    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (root, grab.com)',                 scheme: 'https://www.grab.com/' },
+    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (Singapore region)',               scheme: 'https://www.grab.com/sg/' },
     { app: 'GrabPay',         tag: 'browser', variant: 'Grab OneLink universal',                    scheme: 'https://grab.onelink.me/2695613898?adj_t=fbi1ojm&pid=referral' },
-    { app: 'GrabPay',         tag: 'android', variant: 'intent: MAIN/LAUNCHER (Grab app)',          scheme: intentLaunch('GrabPay', 'intent: MAIN/LAUNCHER', 'com.grabtaxi.passenger') },
     { app: 'GrabPay',         tag: 'android', variant: 'intent:// scheme=grab pay screen',          scheme: intentData('GrabPay', 'intent:// scheme=grab pay screen', 'open?screenType=PAY', 'grab', 'com.grabtaxi.passenger') },
     { app: 'GrabPay',         tag: 'both',    variant: 'grab://open?screenType=PAY',                scheme: 'grab://open?screenType=PAY' },
 
     // Singtel Dash — pkg com.SingTel.mWallet. Verified: www.dash.com.sg.
-    { app: 'Singtel Dash',    tag: 'applink', variant: 'App Link (dash.com.sg verified)',           scheme: 'https://www.dash.com.sg/' },
-    { app: 'Singtel Dash',    tag: 'android', variant: 'intent: MAIN/LAUNCHER',                     scheme: intentLaunch('Singtel Dash', 'intent: MAIN/LAUNCHER', 'com.SingTel.mWallet') },
+    { app: 'Singtel Dash',    tag: 'applink', variant: 'App Link (dash.com.sg)',                    scheme: 'https://www.dash.com.sg/' },
     { app: 'Singtel Dash',    tag: 'both',    variant: 'dash://',                                   scheme: 'dash://' },
     { app: 'Singtel Dash',    tag: 'both',    variant: 'singtel-dash://',                           scheme: 'singtel-dash://' },
 
     // ShopeePay (lives inside Shopee SG) — pkg com.shopee.sg. Verified: shopee.sg.
-    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (shopee.sg verified)',             scheme: 'https://shopee.sg/' },
-    { app: 'ShopeePay',       tag: 'android', variant: 'intent: MAIN/LAUNCHER (Shopee app)',        scheme: intentLaunch('ShopeePay', 'intent: MAIN/LAUNCHER', 'com.shopee.sg') },
+    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (root, shopee.sg)',                scheme: 'https://shopee.sg/' },
+    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (wallet path guess)',              scheme: 'https://shopee.sg/m/wallet' },
     { app: 'ShopeePay',       tag: 'both',    variant: 'shopeesg://',                               scheme: 'shopeesg://' },
     { app: 'ShopeePay',       tag: 'both',    variant: 'shopee://',                                 scheme: 'shopee://' },
 
