@@ -12,6 +12,8 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://paynow.sankhacooray.com/">
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
 <style>
   :root {
     --bg: #0f1115;
@@ -170,6 +172,40 @@
       icon" isn't possible from a web page — every working deep link must target a specific
       <code>&lt;intent-filter&gt;</code>.
     </div>
+  </section>
+
+  <section class="card">
+    <h2>PayNow SGQR — works with every SG bank app</h2>
+    <div class="grid">
+      <div>
+        <label for="proxyType">Recipient type</label>
+        <select id="proxyType" style="width:100%; padding:12px; font:inherit; color:var(--text); background:var(--panel-2); border:1px solid var(--line); border-radius:10px; -webkit-appearance:none; appearance:none;">
+          <option value="0">Mobile (+65)</option>
+          <option value="2">UEN</option>
+          <option value="3">NRIC / FIN</option>
+        </select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <label style="display:flex; align-items:center; gap:8px; padding-top:6px">
+          <input type="checkbox" id="editable" checked> Allow editing amount in bank app
+        </label>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:center; margin-top:14px">
+      <div style="background:#fff; padding:12px; border-radius:10px; line-height:0">
+        <canvas id="qrCanvas" width="240" height="240"></canvas>
+      </div>
+    </div>
+    <div class="note" style="margin-top:10px; text-align:center">
+      Open any SG bank app → tap <strong>Scan</strong> → point at this QR. Recipient + amount come from the
+      fields above. Uses the recipient type + the mobile field (treated as <code>+65</code> prefix for Mobile,
+      otherwise verbatim).
+    </div>
+    <details style="margin-top:8px">
+      <summary>EMVCo payload</summary>
+      <div class="note" style="margin-top:6px"><code id="qrPayload" style="font-size:11px; word-break:break-all"></code></div>
+    </details>
   </section>
 
   <section id="apps"></section>
@@ -446,10 +482,72 @@
   };
   $('#dismissFail').addEventListener('click', () => $('#failBanner').classList.remove('show'));
 
-  // ---- Input change → refresh visible URLs --------------------------------
-  ['#mobile','#amount','#ref'].forEach(sel => {
-    $(sel).addEventListener('input', () => {
+  // ---- PayNow SGQR (EMVCo) ------------------------------------------------
+  // Spec: PayNow follows the EMVCo QR Code Specification for Payment Systems
+  // (Merchant Presented Mode). Each field is Tag(2) + Length(2) + Value;
+  // recipient is encoded under merchant-account-info tag 26 with sub-fields
+  // 00=SG.PAYNOW, 01=proxy-type, 02=identifier, 03=editable (0=yes/1=no),
+  // 04=expiry. CRC at tag 63 is CRC-CCITT-FALSE over everything before it
+  // (including the literal "6304" prefix).
+  const tlv = (tag, val) => `${String(tag).padStart(2,'0')}${String(val.length).padStart(2,'0')}${val}`;
+  const crc16ccitt = (s) => {
+    let crc = 0xFFFF;
+    for (let i = 0; i < s.length; i++) {
+      crc ^= (s.charCodeAt(i) & 0xFF) << 8;
+      for (let j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  };
+  const buildPayNowPayload = () => {
+    const proxyType = $('#proxyType').value;     // '0' mobile, '2' UEN, '3' NRIC
+    const rawProxy = ($('#mobile').value || '').trim();
+    const amount = ($('#amount').value || '').trim();
+    const ref = ($('#ref').value || '').trim();
+    const editable = $('#editable').checked;
+
+    // Mobile is encoded as +65xxxxxxxx; UEN/NRIC verbatim.
+    let identifier = rawProxy;
+    if (proxyType === '0' && rawProxy && !rawProxy.startsWith('+')) {
+      identifier = '+65' + rawProxy.replace(/^\+?65/, '').replace(/\s+/g, '');
+    }
+    if (!identifier) return '';
+
+    const merchant = tlv(0, 'SG.PAYNOW') +
+                     tlv(1, proxyType) +
+                     tlv(2, identifier) +
+                     tlv(3, editable ? '0' : '1') +
+                     tlv(4, '99991231');
+
+    let payload = tlv(0, '01') +                          // Payload format
+                  tlv(1, amount ? '12' : '11') +          // 12=dynamic, 11=static
+                  tlv(26, merchant) +
+                  tlv(52, '0000') +                       // MCC unspecified
+                  tlv(53, '702') +                        // SGD
+                  (amount ? tlv(54, amount) : '') +
+                  tlv(58, 'SG') +
+                  tlv(59, 'NA') +                         // Merchant name placeholder
+                  tlv(60, 'Singapore');
+    if (ref) payload += tlv(62, tlv(1, ref.slice(0, 25)));
+    const withCrcTag = payload + '6304';
+    return withCrcTag + crc16ccitt(withCrcTag);
+  };
+  const renderQR = () => {
+    const payload = buildPayNowPayload();
+    $('#qrPayload').textContent = payload || '(enter a recipient)';
+    if (!payload || typeof QRCode === 'undefined') return;
+    QRCode.toCanvas($('#qrCanvas'), payload, { width: 240, margin: 1, errorCorrectionLevel: 'M' }, () => {});
+  };
+
+  // ---- Input change → refresh visible URLs + QR ---------------------------
+  ['#mobile','#amount','#ref','#proxyType','#editable'].forEach(sel => {
+    const el = $(sel);
+    if (!el) return;
+    const evt = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(evt, () => {
       document.querySelectorAll('.btn').forEach(b => b._refresh && b._refresh());
+      renderQR();
     });
   });
 
@@ -458,6 +556,7 @@
   renderApps();
   renderLog();
   handleIntentFailure();
+  renderQR();
 </script>
 </body>
 </html>
