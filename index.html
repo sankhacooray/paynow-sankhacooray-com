@@ -122,11 +122,13 @@
 <body>
 <div class="wrap">
   <header>
-    <h1><span class="dot"></span>SG Payment Deep Link Test</h1>
+    <h1><span class="dot"></span>SG Payment Deep Link Test (Android)</h1>
     <div class="sub">
-      Tap a button to attempt opening the named app. The <span style="color:#f59e0b">App Link</span> rows are
-      verified via the app's own <code>assetlinks.json</code> and are the most likely to work; the rest are
-      community-observed schemes that may or may not still be claimed by current app builds.
+      <span style="color:#f59e0b">App Link</span> rows = https URLs on domains the app has verified via
+      <code>assetlinks.json</code>; <span style="color:#3ddc84">Android intent</span> rows =
+      <code>intent://…</code> URIs targeting the app's package.<br>
+      <strong>PayLah!:</strong> real scheme is <code>dbspaylah://</code> (extracted from DBS's own
+      <code>paylink.js</code>); the <code>{ref}</code> field doubles as the <code>txnref</code> token.
     </div>
   </header>
 
@@ -150,8 +152,8 @@
     </div>
     <div class="row" style="margin-top:10px">
       <label style="margin:0; flex:1">
-        <span style="display:block; margin-bottom:4px">Reference / note (optional)</span>
-        <input id="ref" type="text" placeholder="paynow test" value="paynow test">
+        <span style="display:block; margin-bottom:4px">Reference / note &nbsp;<span style="color:var(--muted)">(also used as PayLah <code>txnref</code>)</span></span>
+        <input id="ref" type="text" placeholder="paynow test, or a real DBS-issued txnref" value="paynow test">
       </label>
     </div>
     <div class="row" style="margin-top:10px">
@@ -159,17 +161,14 @@
       <span class="pill"><span id="ua-hint">UA</span></span>
     </div>
     <div class="note">
-      <strong>Order of likelihood per app:</strong>
-      <span style="color:#f59e0b">App Link</span> (verified https URL) →
-      <span style="color:#3ddc84">Android</span> intent (custom scheme) →
-      <span style="color:#cbd2e0">iOS · Android</span> bare scheme.<br>
-      Chrome on Android <em>strips</em> <code>action=MAIN+category=LAUNCHER</code> from web-originated intents
-      (security restriction), so "just open the app icon" via a web link isn't possible — only intents matching
-      a specific <code>&lt;intent-filter&gt;</code> declared by the app can launch it.<br>
-      <strong>If you see "FAILED" in the red banner</strong> (or the app website opens in Chrome instead of the app):
-      the URL doesn't match an autoVerify intent-filter pattern in the installed app's manifest.<br>
-      Apps with no verified App Links on any public domain (DBS PayLah!, OCBC Digital, UOB TMRW) probably can't
-      be opened from a web link at all — the realistic alternative is an SGQR PayNow QR code.
+      <strong>How to test:</strong> tap a button. If the app opens, that variant works. If you stay in Chrome
+      (either landing on the app's website or seeing a red banner appear at the top of this page), that variant
+      doesn't route to the installed app.<br>
+      <strong>App Link path patterns are guesses</strong> — assetlinks.json proves only the domain is verified by
+      the app, not which paths under that domain the app's manifest has registered. Try each one.<br>
+      Chrome strips <code>action=MAIN</code> from web-originated intents, so "open this app like tapping its
+      icon" isn't possible from a web page — every working deep link must target a specific
+      <code>&lt;intent-filter&gt;</code>.
     </div>
   </section>
 
@@ -229,61 +228,65 @@
   // actually claims. So these are still guesses about the path; only the
   // domain ownership is confirmed.
   const SCHEMES = [
-    // DBS PayLah! — pkg com.dbs.dbspaylah. No verified App Link domains found
-    // on any DBS subdomain (dbs.com.sg, posb.com.sg, paylah.* all checked).
-    // Custom schemes appear unsupported in current builds. Likely dead end.
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// scheme=paylah, no path',          scheme: intentData('DBS PayLah!', 'intent:// scheme=paylah, no path', '', 'paylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// transfer w/ params',              scheme: intentData('DBS PayLah!', 'intent:// transfer w/ params', 'transfer?mobile={mobile}&amount={amount}&ref={ref}', 'paylah', 'com.dbs.dbspaylah') },
-    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah://',                                 scheme: 'paylah://' },
-    { app: 'DBS PayLah!',     tag: 'both',    variant: 'paylah:// + transfer params',               scheme: 'paylah://transfer?mobile={mobile}&amount={amount}&ref={ref}' },
+    // DBS PayLah! — pkg com.dbs.dbspaylah.
+    // Real scheme discovered by inspecting dbs.com.sg/personal/mobile/paylink/js/paylink.js
+    // which is the actual DBS-served Payment Request Link page. They use:
+    //   Android:  intent://com.dbs.paylah/?txnref=XXX#Intent;scheme=dbspaylah;package=com.dbs.dbspaylah;...;end
+    //   iOS:      dbspaylah://?txnref=XXX
+    // So the registered custom scheme is `dbspaylah://` (NOT `paylah://` as
+    // widely guessed online). The `txnref` is a DBS-server-signed token
+    // encoding payee+amount+reference — arbitrary tokens may open the app
+    // to a "link expired" screen, but should confirm the scheme handler
+    // exists. Use the {ref} field for the txnref value while testing.
+    { app: 'DBS PayLah!',     tag: 'applink', variant: 'DBS Payment Link page (dbs.com.sg/paylink)',             scheme: 'https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef={ref}' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// dbspaylah (DBS\'s own format)',                scheme: intentData('DBS PayLah!', 'intent:// dbspaylah (DBS own format)', 'com.dbs.paylah/?txnref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// dbspaylah no path',                            scheme: intentData('DBS PayLah!', 'intent:// dbspaylah no path', '', 'dbspaylah', 'com.dbs.dbspaylah') },
 
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking. Verified App Link domains:
     // www.dbs.com.sg, dbs.com.sg, www.posb.com.sg, posb.com.sg.
-    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (root, dbs.com.sg)',               scheme: 'https://www.dbs.com.sg/' },
-    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (personal page)',                  scheme: 'https://www.dbs.com.sg/personal/default.page' },
-    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (digibank login deep path)',       scheme: 'https://www.dbs.com.sg/personal/dbs-mobile-banking.page' },
-    { app: 'DBS digibank',    tag: 'both',    variant: 'digibank://',                               scheme: 'digibank://' },
-    { app: 'DBS digibank',    tag: 'both',    variant: 'dbsmax://',                                 scheme: 'dbsmax://' },
+    // Root URL just opens website in Chrome — only specific deep paths route
+    // to the app (which paths are autoVerify'd in the manifest is unknown,
+    // so these are guesses).
+    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (mobile banking page)',                         scheme: 'https://www.dbs.com.sg/personal/dbs-mobile-banking.page' },
+    { app: 'DBS digibank',    tag: 'applink', variant: 'App Link (digibank login path)',                         scheme: 'https://www.dbs.com.sg/personal/dlogin/dbs/dbsdLogin.page' },
 
-    // POSB digibank SG — pkg com.dbs.sg.posbmbanking. Same verified domains.
-    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (root, posb.com.sg)',              scheme: 'https://www.posb.com.sg/' },
-    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (personal page)',                  scheme: 'https://www.posb.com.sg/personal/default.page' },
+    // POSB digibank SG — pkg com.dbs.sg.posbmbanking
+    { app: 'POSB digibank',   tag: 'applink', variant: 'App Link (mobile banking page)',                         scheme: 'https://www.posb.com.sg/personal/posb-mobile-banking.page' },
 
-    // OCBC Digital — pkg com.ocbc.mobile. ocbc.com / ocbc.com.sg don't serve
-    // assetlinks.json at all. No App Links discovered.
-    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcdigital://',                            scheme: 'ocbcdigital://' },
-    { app: 'OCBC Digital',    tag: 'both',    variant: 'ocbcpayanyone://',                          scheme: 'ocbcpayanyone://' },
-
-    // UOB TMRW — pkg com.uob.mighty.app. No assetlinks.json on uob.com.sg.
-    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobtmrw://',                                scheme: 'uobtmrw://' },
-    { app: 'UOB TMRW',        tag: 'both',    variant: 'uobmighty://',                              scheme: 'uobmighty://' },
-
-    // GrabPay (lives inside Grab) — pkg com.grabtaxi.passenger. Verified:
-    // www.grab.com, grab.com.
-    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (root, grab.com)',                 scheme: 'https://www.grab.com/' },
-    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (Singapore region)',               scheme: 'https://www.grab.com/sg/' },
-    { app: 'GrabPay',         tag: 'browser', variant: 'Grab OneLink universal',                    scheme: 'https://grab.onelink.me/2695613898?adj_t=fbi1ojm&pid=referral' },
-    { app: 'GrabPay',         tag: 'android', variant: 'intent:// scheme=grab pay screen',          scheme: intentData('GrabPay', 'intent:// scheme=grab pay screen', 'open?screenType=PAY', 'grab', 'com.grabtaxi.passenger') },
-    { app: 'GrabPay',         tag: 'both',    variant: 'grab://open?screenType=PAY',                scheme: 'grab://open?screenType=PAY' },
+    // GrabPay (lives inside Grab) — pkg com.grabtaxi.passenger.
+    // Verified: www.grab.com, grab.com.
+    // OneLink (https://grab.onelink.me/...) is Grab's official deep-link
+    // router — it inspects the device and routes to the app or store.
+    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (grab.com/sg/grabpay)',                         scheme: 'https://www.grab.com/sg/grabpay/' },
+    { app: 'GrabPay',         tag: 'applink', variant: 'App Link (grab.com/sg/finance)',                         scheme: 'https://www.grab.com/sg/finance/' },
+    { app: 'GrabPay',         tag: 'applink', variant: 'Grab OneLink (router)',                                  scheme: 'https://grab.onelink.me/2695613898?adj_t=fbi1ojm&pid=referral' },
+    { app: 'GrabPay',         tag: 'android', variant: 'intent:// scheme=grab pay screen',                       scheme: intentData('GrabPay', 'intent:// scheme=grab pay screen', 'open?screenType=PAY', 'grab', 'com.grabtaxi.passenger') },
+    { app: 'GrabPay',         tag: 'android', variant: 'intent:// scheme=grab wallet',                           scheme: intentData('GrabPay', 'intent:// scheme=grab wallet', 'open?screenType=WALLET', 'grab', 'com.grabtaxi.passenger') },
 
     // Singtel Dash — pkg com.SingTel.mWallet. Verified: www.dash.com.sg.
-    { app: 'Singtel Dash',    tag: 'applink', variant: 'App Link (dash.com.sg)',                    scheme: 'https://www.dash.com.sg/' },
-    { app: 'Singtel Dash',    tag: 'both',    variant: 'dash://',                                   scheme: 'dash://' },
-    { app: 'Singtel Dash',    tag: 'both',    variant: 'singtel-dash://',                           scheme: 'singtel-dash://' },
+    { app: 'Singtel Dash',    tag: 'applink', variant: 'App Link (dash.com.sg/scan)',                            scheme: 'https://www.dash.com.sg/scan' },
+    { app: 'Singtel Dash',    tag: 'applink', variant: 'App Link (dash.com.sg/pay)',                             scheme: 'https://www.dash.com.sg/pay' },
 
     // ShopeePay (lives inside Shopee SG) — pkg com.shopee.sg. Verified: shopee.sg.
-    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (root, shopee.sg)',                scheme: 'https://shopee.sg/' },
-    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (wallet path guess)',              scheme: 'https://shopee.sg/m/wallet' },
-    { app: 'ShopeePay',       tag: 'both',    variant: 'shopeesg://',                               scheme: 'shopeesg://' },
-    { app: 'ShopeePay',       tag: 'both',    variant: 'shopee://',                                 scheme: 'shopee://' },
+    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (shopee.sg/m/wallet)',                          scheme: 'https://shopee.sg/m/wallet' },
+    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (shopee.sg/m/shopeepay)',                       scheme: 'https://shopee.sg/m/shopeepay' },
+    { app: 'ShopeePay',       tag: 'applink', variant: 'App Link (shopee.sg/m/scan)',                            scheme: 'https://shopee.sg/m/scan' },
+    { app: 'ShopeePay',       tag: 'android', variant: 'intent:// scheme=shopeesg wallet',                       scheme: intentData('ShopeePay', 'intent:// scheme=shopeesg wallet', 'wallet', 'shopeesg', 'com.shopee.sg') },
 
-    // Generic sanity checks — if these don't work, the page mechanism itself is broken
-    { app: 'Sanity checks',   tag: 'both',    variant: 'tel: (open dialer)',                        scheme: 'tel:{mobile}' },
-    { app: 'Sanity checks',   tag: 'both',    variant: 'sms: (open messages)',                      scheme: 'sms:{mobile}?body=PayNow%20{amount}%20{ref}' },
+    // OCBC Digital — pkg com.ocbc.mobile. No App Links discovered, custom
+    // schemes only — and these almost certainly don't resolve. Kept as a
+    // marker so we don't re-add them.
+    { app: 'OCBC Digital',    tag: 'android', variant: 'intent:// scheme=ocbcdigital',                           scheme: intentData('OCBC Digital', 'intent:// scheme=ocbcdigital', '', 'ocbcdigital', 'com.ocbc.mobile') },
+
+    // UOB TMRW — pkg com.uob.mighty.app. No App Links discovered.
+    { app: 'UOB TMRW',        tag: 'android', variant: 'intent:// scheme=uobtmrw',                               scheme: intentData('UOB TMRW', 'intent:// scheme=uobtmrw', '', 'uobtmrw', 'com.uob.mighty.app') },
+
+    // Sanity check — confirms JS-driven nav is working
+    { app: 'Sanity check',    tag: 'applink', variant: 'tel: (open dialer)',                                     scheme: 'tel:{mobile}' },
   ];
 
-  const TAG_LABEL = { applink: 'App Link', android: 'Android', ios: 'iOS', both: 'iOS · Android', browser: 'Universal' };
-  const TAG_COLOR = { applink: '#f59e0b', android: '#3ddc84', ios: '#7ec8e3', both: '#cbd2e0', browser: '#a78bfa' };
+  const TAG_LABEL = { applink: 'App Link / URL', android: 'Android intent' };
+  const TAG_COLOR = { applink: '#f59e0b', android: '#3ddc84' };
 
   // ---- Helpers ------------------------------------------------------------
   const $ = (sel, root=document) => root.querySelector(sel);
