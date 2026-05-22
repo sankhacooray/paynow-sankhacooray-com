@@ -257,6 +257,24 @@
     { app: 'DBS PayLah!',     tag: 'applink', variant: 'DBS Payment Link page — opens payment screen (txnref-validated)', scheme: 'https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef={ref}' },
     { app: 'DBS PayLah!',     tag: 'android', variant: 'intent:// txnref — opens payment screen (txnref-validated)',     scheme: intentData('DBS PayLah!', 'intent:// txnref', 'com.dbs.paylah/?txnref={ref}', 'dbspaylah', 'com.dbs.dbspaylah') },
 
+    // Variants suggested by another project (2026-05). These probe whether
+    // PayLah declares ADDITIONAL intent-filters beyond the one we already
+    // characterised (scheme=dbspaylah host=com.dbs.paylah). The host portions
+    // here (scan, scanqr, qr, etc.) are different hosts — a match would mean
+    // PayLah has a second filter with `host="scan"` etc. Predicted: no-app /
+    // FAILED, because PayLah likely only has the one filter we already
+    // identified — but confirming empirically.
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scan (host=scan)',          scheme: 'dbspaylah://scan' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanqr (host=scanqr)',      scheme: 'dbspaylah://scanqr' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanpay (host=scanpay)',    scheme: 'dbspaylah://scanpay' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://qr (host=qr)',              scheme: 'dbspaylah://qr' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scanandpay',                scheme: 'dbspaylah://scanandpay' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah://scan-pay',                  scheme: 'dbspaylah://scan-pay' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'dbspaylah:// (bare, no host)',          scheme: 'dbspaylah://' },
+    { app: 'DBS PayLah!',     tag: 'android', variant: 'paylah:// (re-test, prev confirmed dead)', scheme: 'paylah://' },
+    { app: 'DBS PayLah!',     tag: 'applink', variant: 'paylah.com.sg/scan (DNS dead — will not load)', scheme: 'https://www.paylah.com.sg/scan' },
+    { app: 'DBS PayLah!',     tag: 'applink', variant: 'dbs.com.sg /paylah/scan.html (spinner → homepage)', scheme: 'https://www.dbs.com.sg/personal/mobile/paylah/scan.html' },
+
     // DBS digibank SG — pkg com.dbs.sg.dbsmbanking. Verified App Link domains:
     // www.dbs.com.sg, dbs.com.sg, www.posb.com.sg, posb.com.sg.
     // Root URL just opens website in Chrome — only specific deep paths route
