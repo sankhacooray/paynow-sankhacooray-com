@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0f1115;
+    color: #e7eaf0;
+    background-image:
+      radial-gradient(900px 460px at 16% -8%, rgba(237,41,57,0.14), transparent 60%),
+      radial-gradient(820px 560px at 104% 18%, rgba(255,183,3,0.10), transparent 60%);
+    padding: 72px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500;
+    color: #ed2939; text-transform: uppercase; letter-spacing: 4px;
+  }
+  h1 {
+    font-family: 'Instrument Serif', serif; font-weight: 400;
+    font-size: 96px; line-height: 1.02; letter-spacing: -2px; margin-top: 28px;
+  }
+  h1 em { color: #ed2939; font-style: italic; }
+  .lede {
+    font-size: 25px; color: #9aa3b2; max-width: 720px; margin-top: 30px; line-height: 1.45;
+  }
+  .foot { display: flex; align-items: baseline; gap: 18px; }
+  .mark { font-family: 'Instrument Serif', serif; font-size: 40px; color: #ed2939; letter-spacing: -0.5px; }
+  .by { font-family: 'JetBrains Mono', monospace; font-size: 17px; color: #9aa3b2; letter-spacing: 1px; }
+  .url { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 17px; color: #9aa3b2; letter-spacing: 1px; }
+  .qr { position: absolute; right: 70px; top: 84px; opacity: 0.9; }
+</style>
+</head>
+<body>
+  <svg class="qr" width="150" height="150" viewBox="0 0 150 150">
+    <rect x="8" y="8" width="134" height="134" rx="24" fill="none" stroke="#ed2939" stroke-width="9"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="36" y="36" width="30" height="30" rx="8" fill="#ed2939"/>
+    <rect x="84" y="36" width="30" height="30" rx="8" fill="#ffb703"/>
+    <rect x="36" y="84" width="30" height="30" rx="8" fill="#ffb703"/>
+    <rect x="94" y="94" width="20" height="20" rx="6" fill="#ed2939"/>
+  </svg>
+
+  <div>
+    <div class="eyebrow">singapore · payment deep links</div>
+    <h1>Which payment app<br><em>actually opens</em>?</h1>
+    <div class="lede">Tap-test deep links into PayLah, DBS, OCBC, UOB, GrabPay, Dash and ShopeePay with a prefilled amount.</div>
+  </div>
+
+  <div class="foot">
+    <span class="mark">paynow</span>
+    <span class="by">Sankha Cooray</span>
+    <span class="url">paynow.sankhacooray.com</span>
+  </div>
+</body>
+</html>

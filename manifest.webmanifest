@@ -1,0 +1,18 @@
+{
+  "name": "paynow — Sankha Cooray",
+  "short_name": "paynow",
+  "description": "A sandbox for testing Singapore payment-app deep links — tap-test PayLah, DBS, OCBC, UOB, GrabPay, Dash and ShopeePay with a prefilled amount.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0f1115",
+  "background_color": "#0f1115",
+  "lang": "en",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    { "src": "assets/icon.svg",         "sizes": "any",     "type": "image/svg+xml" },
+    { "src": "assets/icon-192.png",     "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png",     "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
