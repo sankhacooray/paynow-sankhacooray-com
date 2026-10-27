@@ -35,97 +35,120 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="paynow">
 
+<script>(function(){try{var t=localStorage.getItem("sc-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 <style>
+  /* SG flag red on a calm neutral; dark by default, light from the system or the switch */
   :root {
-    --bg: #0f1115;
-    --panel: #181b22;
-    --panel-2: #20242d;
-    --line: #2a2f3a;
-    --text: #e7eaf0;
-    --muted: #9aa3b2;
-    --accent: #ed2939; /* SG flag red */
-    --accent-2: #ffb703;
-    --ok: #4ade80;
-    --warn: #f59e0b;
-    --code: #0b0d12;
+    --bg: #0f1115; --panel: #181b22; --panel-2: #20242d; --line: #2a2f3a;
+    --text: #e7eaf0; --muted: #9aa3b2;
+    --accent: #ed2939; --accent-hi: #f2495a; --accent-soft: rgba(237,41,57,.16); --accent-2: #ffb703;
+    --ok: #4ade80; --warn: #f59e0b; --code: #0b0d12; --card-hover: #1d2029;
+    --bar: rgba(15,17,21,.82); --page-bg: #0f1115;
+    --info-ring: var(--line); --info-fg: var(--muted); color-scheme: dark;
   }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg: #f6f7fb;
-      --panel: #ffffff;
-      --panel-2: #f0f2f7;
-      --line: #e1e5ee;
-      --text: #15181f;
-      --muted: #5b6473;
-      --code: #f3f4f9;
-    }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+      --bg: #f6f7fb; --panel: #ffffff; --panel-2: #f0f2f7; --line: #e1e5ee;
+      --text: #15181f; --muted: #5b6473; --code: #f3f4f9; --card-hover: #fbf3f4;
+      --bar: rgba(246,247,251,.85); --accent-soft: rgba(237,41,57,.10); --page-bg: #f6f7fb; color-scheme: light;
+  } }
+  :root[data-theme="light"] {
+      --bg: #f6f7fb; --panel: #ffffff; --panel-2: #f0f2f7; --line: #e1e5ee;
+      --text: #15181f; --muted: #5b6473; --code: #f3f4f9; --card-hover: #fbf3f4;
+      --bar: rgba(246,247,251,.85); --accent-soft: rgba(237,41,57,.10); --page-bg: #f6f7fb; color-scheme: light;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  /* rule 14: body is the scroller, no bounce, no white edge */
+  html { height: 100%; overflow: hidden; background: var(--page-bg); overscroll-behavior: none; }
   body {
+    height: 100%; margin: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: none;
+    background: var(--bg); color: var(--text);
     font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    display: flex; flex-direction: column;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 14px 80px; }
-  header { padding: 8px 4px 16px; }
-  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
-  h1 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; transform: translateY(-2px); }
-  .sub { color: var(--muted); font-size: 13px; }
-  .sub a { color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }
 
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 12px 0; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  /* app bar: full width, no border, one CTA (rules 7, 12, 19) */
+  .topbar { position: sticky; top: 0; z-index: 20; flex: none; background: var(--bar); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding-top: env(safe-area-inset-top, 0px); }
+  .topbar .bar { display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px)); }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+  .brand h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; white-space: nowrap; }
+  .brand .sub { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .iconbtn { all: unset; cursor: pointer; width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; color: var(--muted); flex: none; }
+  .iconbtn:hover { color: var(--text); background: var(--accent-soft); }
+  .iconbtn:focus-visible, .cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* rule 23: the toggle shows the theme it switches TO: moon on light, sun on dark */
+.ico-sun{display:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ico-sun{display:block}:root:not([data-theme="light"]) .ico-moon{display:none}}
+:root[data-theme="dark"] .ico-sun{display:block}:root[data-theme="dark"] .ico-moon{display:none}
+  .cta { display: inline-flex; align-items: center; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; line-height: 1; padding: 11px 18px; border-radius: 999px; white-space: nowrap; flex: none; transition: background .15s, box-shadow .15s; }
+  .cta:hover { background: var(--accent-hi); box-shadow: 0 0 0 4px var(--accent-soft), 0 6px 20px -6px var(--accent); }
+
+  /* main: answer first, then three panels that each scroll inside (rules 33, 34) */
+  .app { flex: 1 0 auto; display: flex; flex-direction: column; gap: 12px; padding: 4px max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px)); }
+  .answer { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; background: var(--panel); border-radius: 14px; padding: 12px 16px; }
+  .answer .verdict { font-size: 16px; font-weight: 600; }
+  .answer .verdict b { color: var(--accent); }
+  .answer .rest { color: var(--muted); font-size: 13.5px; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, .9fr); gap: 12px; }
+  .panel { background: var(--panel); border-radius: 14px; display: flex; flex-direction: column; min-height: 0; }
+  .panel > h2, .panel-head { flex: none; }
+  .panel-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px; }
+  .panel-head h2, .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 600; }
+  .panel-head .legend { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 16px 16px; }
+  .card { background: transparent; padding: 10px 0 14px; }
+  .card + .card { padding-top: 14px; }
 
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   input[type=text], input[type=tel], input[type=number] {
-    width: 100%; padding: 12px 12px; font: inherit; color: var(--text);
+    width: 100%; padding: 12px; font: inherit; font-size: 16px; color: var(--text);
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; outline: none;
     -webkit-appearance: none; appearance: none;
   }
   input:focus { border-color: var(--accent); }
 
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-  .pill .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: var(--panel-2); color: var(--muted); font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill .swatch { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 
-  .app-block { margin-top: 18px; }
-  .app-head { display: flex; align-items: baseline; gap: 8px; margin: 4px 2px 8px; }
+  .app-block { padding: 6px 0 10px; }
+  .app-block + .app-block { padding-top: 12px; }
+  .app-head { display: flex; align-items: baseline; gap: 8px; margin: 4px 2px 6px; }
   .app-head .name { font-weight: 600; font-size: 15px; }
   .app-head .tag { color: var(--muted); font-size: 12px; }
 
   .btn {
     display: block; width: 100%; text-align: left; cursor: pointer;
-    background: var(--panel); color: var(--text);
-    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid transparent; border-radius: 12px; padding: 12px 14px;
     margin: 8px 0; text-decoration: none;
-    transition: transform .04s ease, border-color .15s ease, background .15s ease;
+    transition: transform .04s ease, border-color .15s ease, background-color .15s ease;
   }
-  .btn:hover { border-color: var(--accent); }
+  .btn:hover { border-color: var(--accent); background: var(--card-hover); }
   .btn:active { transform: scale(.995); }
   .btn .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   .btn .label { font-weight: 600; font-size: 14px; }
-  .btn .url { display: block; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); margin-top: 6px; word-break: break-all; background: var(--code); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
-  .btn .copy {
-    border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
-    border-radius: 8px; padding: 6px 9px; font-size: 11px; cursor: pointer;
-  }
-  .btn .copy:hover { color: var(--text); border-color: var(--accent); }
-  .btn .copy.ok { color: var(--ok); border-color: var(--ok); }
+  .btn .url { display: block; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); margin-top: 6px; word-break: break-all; background: var(--code); padding: 8px 10px; border-radius: 8px; }
+  .copy { border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 6px 9px; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+  .copy.ok { color: var(--ok); border-color: var(--ok); }
   .tag-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px; margin-left: 6px; vertical-align: middle; font-weight: 500; letter-spacing: .02em; }
 
-  .log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 240px; overflow: auto; color: var(--muted); }
-  .log .entry { padding: 4px 0; border-bottom: 1px dashed var(--line); }
-  .log .entry:last-child { border-bottom: none; }
+  /* activity log: entries separated by space and surface, no rules (rule 7) */
+  .log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); display: grid; gap: 6px; align-content: start; }
+  .log .entry { padding: 8px 10px; background: var(--code); border-radius: 8px; word-break: break-all; }
   .log .ts { color: var(--accent-2); margin-right: 8px; }
-  .log .clear { float: right; font-size: 11px; }
-  .log-empty { color: var(--muted); font-style: italic; }
-  .log .entry.fail { background: rgba(237,41,57,.08); margin: 2px -8px; padding: 6px 10px; border-left: 3px solid var(--accent); border-radius: 4px; }
+  .log-empty { color: var(--muted); font-style: italic; padding: 8px 0; }
+  .log .entry.fail { background: var(--accent-soft); }
   .log .fail-tag { color: var(--accent); font-weight: 600; margin-right: 8px; }
 
   .fail-banner {
-    display: none; position: sticky; top: 0; z-index: 10;
-    background: var(--accent); color: #fff; padding: 12px 14px; margin: -8px -2px 12px;
+    display: none; position: fixed; top: calc(var(--bar-h, 60px) + 10px); left: 50%; transform: translateX(-50%); z-index: 30;
+    width: min(560px, calc(100% - 24px));
+    background: var(--accent); color: #fff; padding: 12px 14px;
     border-radius: 12px; box-shadow: 0 8px 24px -10px rgba(237,41,57,.5);
     font-size: 13px; line-height: 1.4;
   }
@@ -134,67 +157,102 @@
   .fail-banner .x { float: right; cursor: pointer; opacity: .85; font-size: 18px; line-height: 1; margin-left: 10px; }
   .fail-banner .x:hover { opacity: 1; }
   .fail-banner code { background: rgba(0,0,0,.18); padding: 1px 5px; border-radius: 4px; }
-  footer { margin-top: 22px; color: var(--muted); font-size: 12px; padding: 0 4px; }
-  footer a { color: var(--muted); }
-  details { margin-top: 6px; }
-  summary { cursor: pointer; color: var(--muted); }
 
-  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.55; }
+  .note p { margin: 0 0 8px; }
+  .note ul { margin: 6px 0 0; padding-left: 20px; }
+
+  /* footer: one short line, the long note behind ⓘ (rule 18) */
+  .footer { flex: none; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 14px; padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 12.5px; }
+  .footer a { color: var(--muted); }
+  .footer a:hover { color: var(--text); }
+  /* rule 18: ⓘ opens a full-screen frosted note on hover intent */
+.info{all:unset;cursor:help;width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;font-size:12px;font-style:italic;font-family:Georgia,serif;box-shadow:inset 0 0 0 1px var(--info-ring);color:var(--info-fg);position:relative;z-index:61}
+.info:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.glass{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 58%,transparent);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s;pointer-events:none;padding:24px}
+.glass.on{opacity:1;visibility:visible;transition:opacity .45s ease,visibility 0s}
+.glass .gmsg{max-width:60ch;font-size:16px;line-height:1.6;color:var(--text);text-align:left}
+.glass .gmsg p{margin:0 0 12px}
+  .glass .gmsg { font-size: 15px; }
+
+  /* laptops and up: the page never scrolls; panels scroll inside (rule 33) */
+  @media (min-width: 1000px) and (min-height: 560px) {
+    body { overflow: hidden; }
+    .app { flex: 1 1 0; min-height: 0; }
+    .cols { flex: 1 1 0; min-height: 0; }
+    .panel { overflow: hidden; }
+  }
+  @media (max-width: 999px) {
+    .cols { grid-template-columns: minmax(0, 1fr); }
+    .log-panel .scroll { max-height: 320px; }
+  }
+  @media (max-width: 640px) {
+    .brand .sub, .brand .wide { display: none; }
+    .topbar .bar { gap: 8px; padding: 0 12px; }
+    .app { padding: 4px 12px 0; }
+    .cta .long { display: none; }
+    .grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 380px) { .brand h1 { font-size: 15px; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1><span class="dot"></span>SG Payment Deep Link Test (Android)</h1>
-    <div class="sub">
-      Tap-test sandbox for which Singapore payment-app deep links open which screen.
-      <span style="color:#f59e0b">App Link</span> rows = verified-domain https URLs;
-      <span style="color:#3ddc84">Android intent</span> rows = <code>intent://…</code> URIs targeting
-      the app's package. See the Findings card below for what's possible and what isn't.
-    </div>
-  </header>
+<header class="topbar"><div class="bar">
+  <div class="brand"><span class="dot"></span><h1>SG <span class="wide">Payment </span>Deep Link Test</h1><span class="sub">Android sandbox</span></div>
+  <div class="spacer"></div>
+  <button class="iconbtn" id="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme"><svg class="ico-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg><svg class="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
+  <a class="cta" id="ctaPaylah" href="#" rel="nofollow"><span>Test PayLah<span class="long"> payment link</span></span></a>
+</div></header>
 
-  <div id="failBanner" class="fail-banner">
-    <span class="x" id="dismissFail">×</span>
-    <strong>Last attempt failed</strong>
-    <span id="failBody">—</span>
+<div id="failBanner" class="fail-banner" role="alert">
+  <span class="x" id="dismissFail">×</span>
+  <strong>Last attempt failed</strong>
+  <span id="failBody">—</span>
+</div>
+
+<main class="app">
+  <div class="answer">
+    <span class="verdict">Only <b>DBS PayLah!</b> opens a prefilled payment screen, and only with a DBS-issued <code>txnref</code>.</span>
+    <span class="rest">Every other app opens its home screen or website. Tap a row below to see it on your phone.</span>
   </div>
 
-  <section class="card">
-    <h2>Test parameters</h2>
-    <div class="grid">
-      <div>
-        <label for="mobile">Recipient (mobile / UEN / NRIC)</label>
-        <input id="mobile" type="tel" inputmode="tel" autocomplete="off" placeholder="91234567" value="91234567">
-      </div>
-      <div>
-        <label for="amount">Amount (SGD)</label>
-        <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" value="1.00">
-      </div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <label style="margin:0; flex:1">
-        <span style="display:block; margin-bottom:4px">Reference / note &nbsp;<span style="color:var(--muted)">(also used as PayLah <code>txnref</code>)</span></span>
-        <input id="ref" type="text" placeholder="paynow test, or a real DBS-issued txnref" value="paynow test">
-      </label>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <span class="pill"><span class="swatch"></span><span id="platform">detecting…</span></span>
-      <span class="pill"><span id="ua-hint">UA</span></span>
-    </div>
-    <div class="note">
-      <strong>How to test:</strong> tap a button. If the app opens, that variant works. If you stay in Chrome
-      (either landing on the app's website or seeing a red banner appear at the top of this page), that variant
-      doesn't route to the installed app.<br>
-      <strong>App Link path patterns are guesses</strong> — assetlinks.json proves only the domain is verified by
-      the app, not which paths under that domain the app's manifest has registered. Try each one.<br>
-      Chrome strips <code>action=MAIN</code> from web-originated intents, so "open this app like tapping its
-      icon" isn't possible from a web page — every working deep link must target a specific
-      <code>&lt;intent-filter&gt;</code>.
-    </div>
-  </section>
-
-  <section class="card">
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-head"><h2>Test parameters</h2></div>
+      <div class="scroll">
+        <div class="card">
+          <div class="grid">
+            <div>
+              <label for="mobile">Recipient (mobile / UEN / NRIC)</label>
+              <input id="mobile" type="tel" inputmode="tel" autocomplete="off" placeholder="91234567" value="91234567">
+            </div>
+            <div>
+              <label for="amount">Amount (SGD)</label>
+              <input id="amount" type="number" inputmode="decimal" step="0.01" min="0" value="1.00">
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label style="margin:0; flex:1">
+              <span style="display:block; margin-bottom:4px">Reference / note &nbsp;<span style="color:var(--muted)">(also used as PayLah <code>txnref</code>)</span></span>
+              <input id="ref" type="text" placeholder="paynow test, or a real DBS-issued txnref" value="paynow test">
+            </label>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <span class="pill"><span class="swatch"></span><span id="platform">detecting…</span></span>
+            <span class="pill"><span id="ua-hint">UA</span></span>
+          </div>
+          <div class="note">
+            <strong>How to test:</strong> tap a button. If the app opens, that variant works. If you stay in Chrome
+            (either landing on the app's website or seeing a red banner appear at the top of this page), that variant
+            doesn't route to the installed app.<br>
+            <strong>App Link path patterns are guesses</strong> — assetlinks.json proves only the domain is verified by
+            the app, not which paths under that domain the app's manifest has registered. Try each one.<br>
+            Chrome strips <code>action=MAIN</code> from web-originated intents, so "open this app like tapping its
+            icon" isn't possible from a web page — every working deep link must target a specific
+            <code>&lt;intent-filter&gt;</code>.
+          </div>
+        </div>
+        <section class="card">
     <h2>Findings — what's actually possible</h2>
     <div class="note" style="line-height:1.55">
       <p style="margin:0 0 8px"><strong>DBS PayLah!</strong> — only the
@@ -231,31 +289,38 @@
       </ul>
     </div>
   </section>
-
-  <section id="apps"></section>
-
-  <section class="card">
-    <h2>Activity log <button class="copy clear" id="clearLog" type="button">clear</button></h2>
-    <div class="log" id="log"><div class="log-empty">No attempts yet — tap a button above.</div></div>
-  </section>
-
-  <footer>
-    Repo: <a href="https://github.com/sankhacooray/paynow-sankhacooray-com">github.com/sankhacooray/paynow-sankhacooray-com</a>.
-    <details>
-      <summary>About the schemes</summary>
-      <div class="note">
-        Custom URL schemes are claimed by an installed app's manifest (iOS <code>CFBundleURLSchemes</code> in Info.plist;
-        Android intent filters in AndroidManifest.xml). Schemes shown here are a mix of community-observed strings
-        and educated guesses — the SG banks don't publish them. Add or remove rows by editing the <code>SCHEMES</code>
-        array in <code>index.html</code>.<br><br>
-        The <code>intent://…#Intent;…;end</code> rows use the
-        <a href="https://developer.chrome.com/docs/android/intents" style="color:inherit">Chrome on Android intent URI</a>
-        syntax — they carry the Play Store package id so the OS can route the click to the right app or open the
-        Play Store listing as a fallback. iOS ignores this format.
       </div>
-    </details>
-  </footer>
-</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Deep links</h2><span class="legend"><span class="tag-badge" style="border-color:#f59e0b;color:#f59e0b;margin:0">App Link / URL</span><span class="tag-badge" style="border-color:#3ddc84;color:#3ddc84;margin:0">Android intent</span></span></div>
+      <div class="scroll"><section id="apps"></section></div>
+    </section>
+
+    <section class="panel log-panel">
+      <div class="panel-head"><h2>Activity log</h2><span class="legend"><button class="copy clear" id="clearLog" type="button">clear</button></span></div>
+      <div class="scroll"><div class="log" id="log"><div class="log-empty">No attempts yet — tap a link.</div></div></div>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">
+  <span>paynow · a deep-link sandbox</span>
+  <a href="https://github.com/sankhacooray/paynow-sankhacooray-com">Source</a>
+  <span>About the schemes</span>
+  <button class="info" id="foot-info" type="button" aria-label="About the schemes" aria-describedby="schemes-msg">i</button>
+</footer>
+
+<div class="glass" id="glass" role="tooltip"><div class="gmsg" id="schemes-msg">
+  <p>Custom URL schemes are claimed by an installed app's manifest (iOS <code>CFBundleURLSchemes</code> in Info.plist;
+  Android intent filters in AndroidManifest.xml). Schemes shown here are a mix of community-observed strings
+  and educated guesses — the SG banks don't publish them. Add or remove rows by editing the <code>SCHEMES</code>
+  array in <code>index.html</code>.</p>
+  <p>The <code>intent://…#Intent;…;end</code> rows use the
+  <a href="https://developer.chrome.com/docs/android/intents" style="color:inherit">Chrome on Android intent URI</a>
+  syntax — they carry the Play Store package id so the OS can route the click to the right app or open the
+  Play Store listing as a fallback. iOS ignores this format.</p>
+</div></div>
 
 <script>
   // ---- Scheme catalogue ---------------------------------------------------
@@ -479,7 +544,7 @@
   const renderLog = () => {
     const el = logEl();
     const items = loadLog();
-    if (!items.length) { el.innerHTML = '<div class="log-empty">No attempts yet — tap a button above.</div>'; return; }
+    if (!items.length) { el.innerHTML = '<div class="log-empty">No attempts yet — tap a link.</div>'; return; }
     el.innerHTML = '';
     items.forEach((it) => {
       const entry = create('div', { class: 'entry' + (it.fail ? ' fail' : '') });
@@ -525,17 +590,40 @@
     });
   });
 
+  // ---- App-bar CTA: the PayLah txnref link (the one that opens a payment screen)
+  const ctaRow = () => SCHEMES.find(r => r.app === 'DBS PayLah!' && r.tag === (/Android/i.test(navigator.userAgent) ? 'android' : 'applink'));
+  const cta = $('#ctaPaylah');
+  const refreshCta = () => { const r = ctaRow(); if (r) cta.setAttribute('href', interpolate(r.scheme)); };
+  cta.addEventListener('click', () => { const r = ctaRow(); if (r) log(`${r.app} — ${r.variant}`, interpolate(r.scheme)); });
+  ['#mobile','#amount','#ref'].forEach(sel => $(sel).addEventListener('input', refreshCta));
+
   // ---- Boot ---------------------------------------------------------------
+  refreshCta();
   detectPlatform();
   renderApps();
   renderLog();
   handleIntentFailure();
 </script>
+<script>
+document.documentElement.style.setProperty('--bar-h', document.querySelector('.topbar').offsetHeight + 'px');
+/* ⓘ: full-screen frosted note while hovering; tap toggles on touch (rule 18) */
+(function(){
+  var b=document.getElementById("foot-info"),g=document.getElementById("glass");if(!b||!g)return;
+  var DELAY=400,timer=0;
+  function on(){clearTimeout(timer);g.classList.add("on")}function off(){clearTimeout(timer);g.classList.remove("on")}
+  function later(){clearTimeout(timer);timer=setTimeout(on,DELAY)}
+  b.addEventListener("mouseenter",later);b.addEventListener("mouseleave",off);b.addEventListener("focus",later);b.addEventListener("blur",off);
+  b.addEventListener("click",function(e){e.stopPropagation();clearTimeout(timer);g.classList.toggle("on")});
+  document.addEventListener("click",function(e){if(e.target!==b)off()});
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")off()});
+})();
+/* theme toggle shared with the sankhacooray.com family (key sc-theme) */
+(function(){var r=document.documentElement,K="sc-theme",mq=window.matchMedia("(prefers-color-scheme: dark)");function eff(){var a=r.getAttribute("data-theme");if(a==="light"||a==="dark")return a;return mq.matches?"dark":"light"}
+  var b=document.getElementById("theme-toggle");if(!b)return;
+  function label(){var l="Switch to "+(eff()==="dark"?"light":"dark")+" theme";b.setAttribute("aria-label",l);b.title=l}
+  label();if(mq.addEventListener)mq.addEventListener("change",label);
+  b.addEventListener("click",function(){var n=eff()==="dark"?"light":"dark";try{localStorage.setItem(K,n)}catch(e){}r.setAttribute("data-theme",n);label()})})();
+</script>
 <script async src="https://sankhacooray.com/js/sankha-analytics.js"></script>
-
-  <!-- Shared network footer · cdn.sankhacooray.com (auto-themes to this page) -->
-  <div id="scn-footer"></div>
-  <script async src="https://cdn.sankhacooray.com/js/sankha-footer.js?v=20260901"
-          data-site="paynow.sankhacooray.com"></script>
 </body>
 </html>
