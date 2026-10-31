@@ -41,19 +41,19 @@
   :root {
     --bg: #0f1115; --panel: #181b22; --panel-2: #20242d; --line: #2a2f3a;
     --text: #e7eaf0; --muted: #9aa3b2;
-    --accent: #ed2939; --accent-hi: #f2495a; --accent-soft: rgba(237,41,57,.16); --accent-2: #ffb703;
+    --accent: #ed2939; --accent-hi: #f2495a; --accent-fill: #d42030; --accent-fill-hi: #e0263a; --accent-text: #ff5c6a; --accent-soft: rgba(237,41,57,.16); --accent-2: #ffb703;
     --ok: #4ade80; --warn: #f59e0b; --code: #0b0d12; --card-hover: #1d2029;
     --bar: rgba(15,17,21,.82); --page-bg: #0f1115;
     --info-ring: var(--line); --info-fg: var(--muted); color-scheme: dark;
   }
   @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
       --bg: #f6f7fb; --panel: #ffffff; --panel-2: #f0f2f7; --line: #e1e5ee;
-      --text: #15181f; --muted: #5b6473; --code: #f3f4f9; --card-hover: #fbf3f4;
+      --text: #15181f; --muted: #5b6473; --accent-text: #d42030; --code: #f3f4f9; --card-hover: #fbf3f4;
       --bar: rgba(246,247,251,.85); --accent-soft: rgba(237,41,57,.10); --page-bg: #f6f7fb; color-scheme: light;
   } }
   :root[data-theme="light"] {
       --bg: #f6f7fb; --panel: #ffffff; --panel-2: #f0f2f7; --line: #e1e5ee;
-      --text: #15181f; --muted: #5b6473; --code: #f3f4f9; --card-hover: #fbf3f4;
+      --text: #15181f; --muted: #5b6473; --accent-text: #d42030; --code: #f3f4f9; --card-hover: #fbf3f4;
       --bar: rgba(246,247,251,.85); --accent-soft: rgba(237,41,57,.10); --page-bg: #f6f7fb; color-scheme: light;
   }
   * { box-sizing: border-box; }
@@ -82,14 +82,14 @@
 .ico-sun{display:none}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ico-sun{display:block}:root:not([data-theme="light"]) .ico-moon{display:none}}
 :root[data-theme="dark"] .ico-sun{display:block}:root[data-theme="dark"] .ico-moon{display:none}
-  .cta { display: inline-flex; align-items: center; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; line-height: 1; padding: 11px 18px; border-radius: 999px; white-space: nowrap; flex: none; transition: background .15s, box-shadow .15s; }
-  .cta:hover { background: var(--accent-hi); box-shadow: 0 0 0 4px var(--accent-soft), 0 6px 20px -6px var(--accent); }
+  .cta { display: inline-flex; align-items: center; background: var(--accent-fill); color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; line-height: 1; padding: 11px 18px; border-radius: 999px; white-space: nowrap; flex: none; transition: background .15s, box-shadow .15s; }
+  .cta:hover { background: var(--accent-fill-hi); box-shadow: 0 0 0 4px var(--accent-soft), 0 6px 20px -6px var(--accent); }
 
   /* main: answer first, then three panels that each scroll inside (rules 33, 34) */
   .app { flex: 1 0 auto; display: flex; flex-direction: column; gap: 12px; padding: 4px max(20px, env(safe-area-inset-right, 0px)) 0 max(20px, env(safe-area-inset-left, 0px)); }
   .answer { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; background: var(--panel); border-radius: 14px; padding: 12px 16px; }
   .answer .verdict { font-size: 16px; font-weight: 600; }
-  .answer .verdict b { color: var(--accent); }
+  .answer .verdict b { color: var(--accent-text); }
   .answer .rest { color: var(--muted); font-size: 13.5px; }
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, .9fr); gap: 12px; }
   .panel { background: var(--panel); border-radius: 14px; display: flex; flex-direction: column; min-height: 0; }
@@ -143,12 +143,12 @@
   .log .ts { color: var(--accent-2); margin-right: 8px; }
   .log-empty { color: var(--muted); font-style: italic; padding: 8px 0; }
   .log .entry.fail { background: var(--accent-soft); }
-  .log .fail-tag { color: var(--accent); font-weight: 600; margin-right: 8px; }
+  .log .fail-tag { color: var(--accent-text); font-weight: 600; margin-right: 8px; }
 
   .fail-banner {
     display: none; position: fixed; top: calc(var(--bar-h, 60px) + 10px); left: 50%; transform: translateX(-50%); z-index: 30;
     width: min(560px, calc(100% - 24px));
-    background: var(--accent); color: #fff; padding: 12px 14px;
+    background: var(--accent-fill); color: #fff; padding: 12px 14px;
     border-radius: 12px; box-shadow: 0 8px 24px -10px rgba(237,41,57,.5);
     font-size: 13px; line-height: 1.4;
   }
